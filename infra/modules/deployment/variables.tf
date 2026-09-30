@@ -14,6 +14,10 @@ variable "github_branch" {
   type = string
 }
 
+variable "github_environment" {
+  type = string
+}
+
 variable "ecr_repository_arn" {
   type = string
 }

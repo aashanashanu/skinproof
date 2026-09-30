@@ -31,6 +31,7 @@ module "deployment" {
   aws_region                  = var.aws_region
   github_repository           = var.github_repository
   github_branch               = var.github_branch
+  github_environment          = var.github_environment
   ecr_repository_arn          = module.api.ecr_repository_arn
   frontend_bucket_arn         = module.web.frontend_bucket_arn
   cloudfront_distribution_arn = module.web.distribution_arn

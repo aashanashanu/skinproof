@@ -27,6 +27,12 @@ variable "github_branch" {
   default     = "main"
 }
 
+variable "github_environment" {
+  description = "GitHub Actions environment required in the OIDC subject claim."
+  type        = string
+  default     = "main"
+}
+
 variable "budget_alert_email" {
   description = "Optional email for AWS Budget notifications. Budget alerts are not a spend cap."
   type        = string
