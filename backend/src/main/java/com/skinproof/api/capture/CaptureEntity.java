@@ -89,5 +89,6 @@ public class CaptureEntity {
     public String getQualityFlagsJson() { return qualityFlagsJson; }
     public boolean isBaseline() { return baseline; }
     public boolean isValid() { return valid; }
+    public boolean isSimulated() { return simulated; }
     public Instant getTakenAt() { return takenAt; }
 }

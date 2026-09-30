@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skinproof.api.analysis.SkinAnalysisResponse;
 import com.skinproof.api.analysis.YouCamApiException;
+import com.skinproof.api.verdict.VerdictService;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -22,16 +23,19 @@ public class AnalysisJobWorker {
     private final AnalysisRepository analyses;
     private final PrivateImageStore images;
     private final com.skinproof.api.analysis.YouCamSkinAnalysisService youCam;
+    private final VerdictService verdicts;
 
     public AnalysisJobWorker(
             CaptureAnalysisService captures,
             AnalysisRepository analyses,
             PrivateImageStore images,
-            com.skinproof.api.analysis.YouCamSkinAnalysisService youCam) {
+            com.skinproof.api.analysis.YouCamSkinAnalysisService youCam,
+            VerdictService verdicts) {
         this.captures = captures;
         this.analyses = analyses;
         this.images = images;
         this.youCam = youCam;
+        this.verdicts = verdicts;
     }
 
     @Scheduled(fixedDelayString = "${skinproof.analysis.poller-interval:PT2S}")
@@ -52,6 +56,11 @@ public class AnalysisJobWorker {
                     concerns);
             job.succeed(result.taskId(), toJson(result.scores()));
             captures.saveAnalysis(job);
+            try {
+                verdicts.recomputeForAnalysis(job.getId());
+            } catch (RuntimeException verdictException) {
+                LOGGER.error("Analysis {} succeeded but its verdict snapshot could not be refreshed.", job.getId(), verdictException);
+            }
         } catch (YouCamApiException exception) {
             recordFailure(job, exception.getHttpStatus() == HttpStatus.UNPROCESSABLE_ENTITY
                     ? "PROVIDER_REJECTED"
