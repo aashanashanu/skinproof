@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-dnf install -y docker jq awscli
+dnf install -y docker jq awscli-2
 systemctl enable --now docker
 install -d -m 0750 /opt/skinproof
 
