@@ -22,5 +22,4 @@ docker run -d \
   --log-driver=awslogs \
   --log-opt awslogs-region='${aws_region}' \
   --log-opt awslogs-group='/skinproof/demo/api' \
-  --log-opt awslogs-create-stream=true \
   "$image_uri"

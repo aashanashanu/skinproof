@@ -38,5 +38,4 @@ docker run -d \
   --log-driver=awslogs \
   --log-opt awslogs-region='${aws_region}' \
   --log-opt awslogs-group='/skinproof/demo/database' \
-  --log-opt awslogs-create-stream=true \
   postgres:16-alpine
