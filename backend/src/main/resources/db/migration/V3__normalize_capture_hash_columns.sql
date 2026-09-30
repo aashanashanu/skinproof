@@ -1,0 +1,5 @@
+ALTER TABLE analyses
+    ALTER COLUMN cache_key TYPE VARCHAR(64);
+
+ALTER TABLE captures
+    ALTER COLUMN image_sha256 TYPE VARCHAR(64);
