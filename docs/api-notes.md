@@ -21,7 +21,7 @@ The M0 endpoint currently implements that documented SD flow at `POST /api/analy
 
 ## SD Concern and Score Contract
 
-The implemented SD action allowlist is `acne`, `age_spot`, `redness`, and `texture`. The request must not mix SD and HD actions. The docs describe score values in the 1–100 range and state higher raw scores mean healthier/more aesthetically pleasing skin. The `ui_score` is adjusted to be more favorable; use `raw_score` for trend calculations and keep both values for transparency.
+The documented SD action allowlist contains 16 actions: `wrinkle`, `droopy_upper_eyelid`, `droopy_lower_eyelid`, `firmness`, `acne`, `moisture`, `eye_bag`, `dark_circle_v2`, `age_spot`, `radiance`, `redness`, `oiliness`, `pore`, `texture`, `tear_trough`, and `skin_type`. These are implemented in the camera test, backend enum, and experiment target selector. Do not mix SD and HD actions in a single request. The docs describe score values in the 1–100 range and state higher raw scores mean healthier/more aesthetically pleasing skin. The `ui_score` is adjusted to be more favorable; use `raw_score` for trend calculations and keep both values for transparency. `skin_type` is categorical; do not treat its category output as a numeric trend score.
 
 The task response documentation shows `data.results.output[]` items with `type`, `raw_score`, `ui_score`, and `mask_urls`. The broader result ZIP includes `score_info.json` and PNG masks. The M0 endpoint currently parses the task response `mask_urls`; it does not yet download/process result ZIP archives.
 

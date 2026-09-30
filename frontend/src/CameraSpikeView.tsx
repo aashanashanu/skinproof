@@ -31,7 +31,7 @@ export function CameraSpikeView({ onClose }: CameraSpikeViewProps) {
 
   function updateConcern(concern: SkinConcernCode, selected: boolean) {
     setSelectedConcerns((current) => {
-      if (selected) return current.length < 4 && !current.includes(concern) ? [...current, concern] : current
+      if (selected) return current.length < skinConcerns.length && !current.includes(concern) ? [...current, concern] : current
       return current.filter((value) => value !== concern)
     })
     setResult(null)
@@ -96,7 +96,7 @@ export function CameraSpikeView({ onClose }: CameraSpikeViewProps) {
           </label>
 
           <fieldset className="concern-select">
-            <legend>SD concerns (choose up to 4)</legend>
+            <legend>SD concerns ({selectedConcerns.length} of {skinConcerns.length} selected)</legend>
             <div className="concern-options">
               {skinConcerns.map((concern) => (
                 <label key={concern.value}>

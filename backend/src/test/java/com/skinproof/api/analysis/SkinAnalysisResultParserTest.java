@@ -48,4 +48,29 @@ class SkinAnalysisResultParserTest {
 
         assertThrows(YouCamApiException.class, () -> parser.parse(response));
     }
+
+      @Test
+      void exposesEveryDocumentedSdAction() {
+        assertEquals(16, SkinConcern.values().length);
+        assertEquals(List.of(
+            "wrinkle",
+            "droopy_upper_eyelid",
+            "droopy_lower_eyelid",
+            "firmness",
+            "acne",
+            "moisture",
+            "eye_bag",
+            "dark_circle_v2",
+            "age_spot",
+            "radiance",
+            "redness",
+            "oiliness",
+            "pore",
+            "texture",
+            "tear_trough",
+            "skin_type"),
+            java.util.Arrays.stream(SkinConcern.values())
+                .map(SkinConcern::action)
+                .toList());
+      }
 }
