@@ -30,6 +30,10 @@ module "deployment" {
   project_name                = var.project_name
   aws_region                  = var.aws_region
   github_repository           = var.github_repository
+  github_owner                = var.github_owner
+  github_owner_id             = var.github_owner_id
+  github_name                 = var.github_name
+  github_repository_id        = var.github_repository_id
   github_branch               = var.github_branch
   github_environment          = var.github_environment
   ecr_repository_arn          = module.api.ecr_repository_arn
