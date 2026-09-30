@@ -108,6 +108,11 @@ resource "aws_iam_role_policy" "runtime" {
         Resource = aws_ecr_repository.this.arn
       },
       {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Resource = "${var.image_bucket_arn}/*"
+      },
+      {
         Effect = "Allow"
         Action = ["logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = [
@@ -147,9 +152,11 @@ resource "aws_instance" "this" {
     aws_region      = var.aws_region
     database_secret = aws_secretsmanager_secret.database.arn
     youcam_secret   = aws_secretsmanager_secret.youcam_api_key.arn
+    image_bucket    = var.image_bucket_name
     api_user_data = templatefile("${path.module}/templates/api_deploy.sh.tftpl", {
       aws_region    = var.aws_region
       youcam_secret = aws_secretsmanager_secret.youcam_api_key.arn
+      image_bucket  = var.image_bucket_name
     })
   })
 

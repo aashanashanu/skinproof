@@ -25,6 +25,15 @@ youcam:
   poll-interval: ${YOUCAM_POLL_INTERVAL:PT3S}
   timeout: ${YOUCAM_TASK_TIMEOUT:PT2M}
 
+skinproof:
+  storage:
+    image-bucket: ${SKINPROOF_IMAGE_BUCKET:}
+  analysis:
+    daily-cap-per-experiment: ${ANALYSIS_DAILY_CAP_PER_EXPERIMENT:3}
+    max-attempts: ${ANALYSIS_MAX_ATTEMPTS:3}
+    retry-base: ${ANALYSIS_RETRY_BASE:PT10S}
+    poller-interval: ${ANALYSIS_POLLER_INTERVAL:PT2S}
+
 springdoc:
   api-docs:
     path: /api-docs

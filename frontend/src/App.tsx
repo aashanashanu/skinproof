@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Archive, Camera, Clock3, FlaskConical, Info, Plus, Sparkles, X } from 'lucide-react'
 import { CameraSpikeView } from './CameraSpikeView'
+import { ExperimentCaptureDialog } from './ExperimentCaptureDialog'
 import { skinConcerns } from './skinConcerns'
 import './App.css'
 
@@ -35,6 +36,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [captureExperiment, setCaptureExperiment] = useState<Experiment | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -223,15 +225,20 @@ function App() {
                     <span className="status-dot"><span aria-hidden="true">●</span> Setting up</span>
                     <span>Started {new Date(`${experiment.startDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                   </div>
-                  <button
-                    className="icon-button archive-button"
-                    type="button"
-                    aria-label={`Archive ${experiment.productName}`}
-                    title="Archive experiment"
-                    onClick={() => void archiveExperiment(experiment.id)}
-                  >
-                    <Archive size={15} aria-hidden="true" />
-                  </button>
+                  <div className="row-actions">
+                    <button className="capture-row-button" type="button" onClick={() => setCaptureExperiment(experiment)}>
+                      <Camera size={14} aria-hidden="true" /> Capture
+                    </button>
+                    <button
+                      className="icon-button archive-button"
+                      type="button"
+                      aria-label={`Archive ${experiment.productName}`}
+                      title="Archive experiment"
+                      onClick={() => void archiveExperiment(experiment.id)}
+                    >
+                      <Archive size={15} aria-hidden="true" />
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -330,6 +337,14 @@ function App() {
             <CameraSpikeView onClose={() => setIsCameraOpen(false)} />
           </div>
         </div>
+      )}
+
+      {captureExperiment && (
+        <ExperimentCaptureDialog
+          experiment={captureExperiment}
+          workspaceId={getDemoWorkspaceId()}
+          onClose={() => setCaptureExperiment(null)}
+        />
       )}
     </div>
   )

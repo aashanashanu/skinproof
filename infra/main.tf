@@ -11,6 +11,8 @@ module "api" {
   instance_type     = var.instance_type
   subnet_id         = module.network.public_subnet_id
   security_group_id = module.network.api_security_group_id
+  image_bucket_name = module.image_storage.image_bucket_name
+  image_bucket_arn  = module.image_storage.image_bucket_arn
 }
 
 module "web" {
@@ -20,9 +22,8 @@ module "web" {
 }
 
 module "image_storage" {
-  source          = "./modules/storage"
-  project_name    = var.project_name
-  frontend_domain = module.web.domain_name
+  source       = "./modules/storage"
+  project_name = var.project_name
 }
 
 module "deployment" {

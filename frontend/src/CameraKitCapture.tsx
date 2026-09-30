@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Camera, LoaderCircle } from 'lucide-react'
 
-type QualityEvent = {
+export type CaptureQuality = {
   hasFace?: boolean
   position?: string
   frontal?: string
@@ -38,7 +38,7 @@ declare global {
 
 type CameraKitCaptureProps = {
   disabled?: boolean
-  onCaptured: (image: File) => void
+  onCaptured: (image: File, quality?: CaptureQuality) => void
 }
 
 function isCaptureEvent(event: unknown): event is CaptureEvent {
@@ -47,8 +47,14 @@ function isCaptureEvent(event: unknown): event is CaptureEvent {
 
 export function CameraKitCapture({ disabled = false, onCaptured }: CameraKitCaptureProps) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'open' | 'error'>('loading')
-  const [quality, setQuality] = useState<QualityEvent | null>(null)
+  const [quality, setQuality] = useState<CaptureQuality | null>(null)
   const [error, setError] = useState('')
+  const onCapturedRef = useRef(onCaptured)
+  const qualityRef = useRef<CaptureQuality | null>(null)
+
+  useEffect(() => {
+    onCapturedRef.current = onCaptured
+  }, [onCaptured])
 
   useEffect(() => {
     let isMounted = true
@@ -65,11 +71,13 @@ export function CameraKitCapture({ disabled = false, onCaptured }: CameraKitCapt
       }
 
       listenerIds.push(cameraKit.addEventListener('faceQualityChanged', (event) => {
-        setQuality(event as QualityEvent)
+        const currentQuality = event as CaptureQuality
+        qualityRef.current = currentQuality
+        setQuality(currentQuality)
       }))
       listenerIds.push(cameraKit.addEventListener('faceDetectionCaptured', (event) => {
         if (!isCaptureEvent(event) || !event.images[0]?.image) return
-        void createCapturedFile(event.images[0].image)
+        void createCapturedFile(event.images[0].image, qualityRef.current ?? undefined)
       }))
       listenerIds.push(cameraKit.addEventListener('cameraFailed', () => {
         setStatus('error')
@@ -79,14 +87,17 @@ export function CameraKitCapture({ disabled = false, onCaptured }: CameraKitCapt
       setStatus('ready')
     }
 
-    async function createCapturedFile(image: string | Blob) {
+    async function createCapturedFile(image: string | Blob, capturedQuality?: CaptureQuality) {
       try {
         const imageResponse = typeof image === 'string' ? await fetch(image) : undefined
         if (imageResponse && !imageResponse.ok) throw new Error('The captured image could not be read.')
         const blob = image instanceof Blob ? image : await imageResponse!.blob()
         const contentType = blob.type.startsWith('image/') ? blob.type : 'image/jpeg'
         const extension = contentType === 'image/png' ? 'png' : 'jpg'
-        onCaptured(new File([blob], `skinproof-camera-${Date.now()}.${extension}`, { type: contentType }))
+        onCapturedRef.current(
+          new File([blob], `skinproof-camera-${Date.now()}.${extension}`, { type: contentType }),
+          capturedQuality,
+        )
         cameraKit?.close()
         setStatus('ready')
       } catch {
@@ -119,7 +130,7 @@ export function CameraKitCapture({ disabled = false, onCaptured }: CameraKitCapt
       listenerIds.forEach((listenerId) => cameraKit?.removeEventListener(listenerId))
       if (window.YMKAsyncInit === setupCameraKit) window.YMKAsyncInit = undefined
     }
-  }, [onCaptured])
+  }, [])
 
   function openCamera() {
     if (!window.YMK || disabled) return

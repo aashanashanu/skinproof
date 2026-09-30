@@ -17,3 +17,11 @@ variable "subnet_id" {
 variable "security_group_id" {
   type = string
 }
+
+variable "image_bucket_name" {
+  type = string
+}
+
+variable "image_bucket_arn" {
+  type = string
+}

@@ -6,7 +6,7 @@ The demo is designed to run without a developer machine hosting the app. Terrafo
 
 Do not run `terraform apply` until the AWS Pricing Calculator has been checked for the chosen region, EC2 instance, public IPv4 address, EBS volume, ECR storage, CloudFront usage, S3 usage, and data transfer. The $25 AWS Budget is an alert, not a hard cap; actual charges can exceed it. Email notifications are created only when `budget_alert_email` is set. `t3.small` is a starting point, not a verified estimate.
 
-The infrastructure has not been applied. No AWS resources or charges have been created by this repository change. Review the full Terraform plan before applying it. The image bucket is intentionally not force-destroyed, so remove its objects deliberately before teardown. Terraform state contains generated database credentials and must be kept private; configure encrypted remote state before treating this as production infrastructure.
+The demo environment is live at `[hosted demo endpoint omitted]`; AWS resources and charges are active. Review the full Terraform plan before applying infrastructure changes. In particular, a change to EC2 `user_data` replaces the instance and its local database volume, so do not apply a plan containing that replacement without a deliberate migration. The image bucket is intentionally not force-destroyed, so remove its objects deliberately before teardown. Terraform state contains generated database credentials and must be kept private; configure encrypted remote state before treating this as production infrastructure.
 
 ## Terraform modules
 
@@ -19,7 +19,7 @@ The infrastructure has not been applied. No AWS resources or charges have been c
 - `modules/deployment`: GitHub OIDC provider, least-privilege deployment role, and policy.
 - `modules/budget`: monthly budget and optional email alerts.
 
-No Terraform state file was present during this refactor. If an earlier copy of the flat configuration was applied outside this workspace, map its existing resource addresses into the child modules before applying; otherwise Terraform may propose replacements.
+The current Terraform state is present for the live modular deployment. Review any state/configuration drift before applying; never use a broad apply to resolve a narrowly scoped runtime change.
 
 ## Provisioning outline
 

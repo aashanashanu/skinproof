@@ -19,6 +19,8 @@ docker run -d \
   --env SPRING_DATASOURCE_USERNAME=skinproof_app \
   --env "SPRING_DATASOURCE_PASSWORD=$(cat /opt/skinproof/database-password)" \
   --env "YOUCAM_API_KEY=$youcam_api_key" \
+  --env AWS_REGION='${aws_region}' \
+  --env SKINPROOF_IMAGE_BUCKET='${image_bucket}' \
   --log-driver=awslogs \
   --log-opt awslogs-region='${aws_region}' \
   --log-opt awslogs-group='/skinproof/demo/api' \
