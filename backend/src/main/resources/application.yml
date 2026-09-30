@@ -1,0 +1,39 @@
+server:
+  port: 8080
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: skinproof-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://database:5432/skinproof}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+
+youcam:
+  api-key: ${YOUCAM_API_KEY:}
+  poll-interval: ${YOUCAM_POLL_INTERVAL:PT3S}
+  timeout: ${YOUCAM_TASK_TIMEOUT:PT2M}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+server.error:
+  include-message: never
+
+logging:
+  level:
+    root: INFO

@@ -1,0 +1,33 @@
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: skinproof
+      POSTGRES_USER: ${DB_USERNAME:-skinproof_app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the deployment environment}
+    volumes:
+      - skinproof-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/skinproof
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-skinproof_app}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the deployment environment}
+      YOUCAM_API_KEY: ${YOUCAM_API_KEY:-}
+    ports:
+      - "8080:8080"
+
+volumes:
+  skinproof-db:

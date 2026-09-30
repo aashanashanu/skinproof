@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+image_uri="$1"
+aws ecr get-login-password --region '${aws_region}' | docker login --username AWS --password-stdin "$(echo "$image_uri" | cut -d/ -f1)"
+docker pull "$image_uri"
+youcam_api_key="$(aws secretsmanager get-secret-value \
+  --region '${aws_region}' \
+  --secret-id '${youcam_secret}' \
+  --query SecretString \
+  --output text 2>/dev/null || true)"
+docker rm -f skinproof-api >/dev/null 2>&1 || true
+docker run -d \
+  --name skinproof-api \
+  --restart unless-stopped \
+  --network skinproof \
+  --publish 8080:8080 \
+  --env SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/skinproof \
+  --env SPRING_DATASOURCE_USERNAME=skinproof_app \
+  --env "SPRING_DATASOURCE_PASSWORD=$(cat /opt/skinproof/database-password)" \
+  --env "YOUCAM_API_KEY=$youcam_api_key" \
+  --log-driver=awslogs \
+  --log-opt awslogs-region='${aws_region}' \
+  --log-opt awslogs-group='/skinproof/demo/api' \
+  --log-opt awslogs-create-stream=true \
+  "$image_uri"
