@@ -21,6 +21,26 @@ variable "github_repository" {
   type        = string
 }
 
+variable "github_owner" {
+  description = "GitHub owner login used in immutable OIDC subject claims."
+  type        = string
+}
+
+variable "github_owner_id" {
+  description = "GitHub numeric owner ID used in immutable OIDC subject claims."
+  type        = string
+}
+
+variable "github_name" {
+  description = "GitHub repository name used in immutable OIDC subject claims."
+  type        = string
+}
+
+variable "github_repository_id" {
+  description = "GitHub numeric repository ID used in immutable OIDC subject claims."
+  type        = string
+}
+
 variable "github_branch" {
   description = "Branch allowed to deploy the hosted demo."
   type        = string
