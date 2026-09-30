@@ -1,0 +1,42 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y docker jq awscli
+systemctl enable --now docker
+install -d -m 0750 /opt/skinproof
+
+cat > /opt/skinproof/deploy.sh <<'DEPLOY_SCRIPT'
+${api_user_data}
+DEPLOY_SCRIPT
+chmod 0750 /opt/skinproof/deploy.sh
+
+for attempt in $(seq 1 12); do
+  if secret_json="$(aws secretsmanager get-secret-value \
+    --region '${aws_region}' \
+    --secret-id '${database_secret}' \
+    --query SecretString \
+    --output text 2>/dev/null)"; then
+    break
+  fi
+  sleep 5
+done
+database_password="$(printf '%s' "$secret_json" | jq -r '.password')"
+printf '%s' "$database_password" > /opt/skinproof/database-password
+chmod 0600 /opt/skinproof/database-password
+
+docker network create skinproof || true
+docker pull postgres:16-alpine
+docker run -d \
+  --name skinproof-database \
+  --restart unless-stopped \
+  --network skinproof \
+  --network-alias database \
+  --volume skinproof-db:/var/lib/postgresql/data \
+  --env POSTGRES_DB=skinproof \
+  --env POSTGRES_USER=skinproof_app \
+  --env "POSTGRES_PASSWORD=$database_password" \
+  --log-driver=awslogs \
+  --log-opt awslogs-region='${aws_region}' \
+  --log-opt awslogs-group='/skinproof/demo/database' \
+  --log-opt awslogs-create-stream=true \
+  postgres:16-alpine
