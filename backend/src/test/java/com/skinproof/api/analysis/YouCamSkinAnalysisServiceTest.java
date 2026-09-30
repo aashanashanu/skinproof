@@ -1,6 +1,7 @@
 package com.skinproof.api.analysis;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
@@ -9,17 +10,44 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 class YouCamSkinAnalysisServiceTest {
+    @Test
+    void includesSanitizedProviderErrorForBadFileRequest() {
+  RestClient.Builder builder = RestClient.builder();
+  MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+  YouCamSkinAnalysisService service = new YouCamSkinAnalysisService(
+    builder,
+    new SkinAnalysisResultParser(),
+    "test-api-key",
+    Duration.ofMillis(1),
+    Duration.ofSeconds(5));
+  server.expect(requestTo("https://yce-api-01.makeupar.com/s2s/v2.0/file"))
+    .andExpect(method(POST))
+    .andRespond(withBadRequest().body("""
+      {"status":400,"error":"Invalid file metadata","error_code":"BadRequest"}
+      """).contentType(MediaType.APPLICATION_JSON));
+
+  YouCamApiException exception = assertThrows(
+    YouCamApiException.class,
+    () -> service.analyze(new byte[] {1}, "sample.png", "image/png", List.of(SkinConcern.ACNE)));
+
+  assertEquals("YouCam API returned HTTP 400: [BadRequest] Invalid file metadata", exception.getMessage());
+  assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getHttpStatus());
+  server.verify();
+    }
+
     @Test
     void uploadsCreatesTaskPollsAndReturnsScores() {
         RestClient.Builder builder = RestClient.builder();

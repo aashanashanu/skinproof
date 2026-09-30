@@ -1,6 +1,7 @@
 package com.skinproof.api.analysis;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -20,6 +22,7 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 @Service
 public class YouCamSkinAnalysisService {
     private static final String API_BASE_URL = "https://yce-api-01.makeupar.com";
+    private static final ObjectMapper ERROR_BODY_PARSER = new ObjectMapper();
 
     private final RestClient apiClient;
     private final RestClient uploadClient;
@@ -58,8 +61,14 @@ public class YouCamSkinAnalysisService {
             List<SkinAnalysisScore> scores = resultParser.parse(completedTask);
             return new SkinAnalysisResponse(taskId, "SD", documentedUnits(concerns.size()), scores);
         } catch (RestClientResponseException exception) {
+            HttpStatus responseStatus = exception.getStatusCode().value() == 400
+                    ? HttpStatus.UNPROCESSABLE_ENTITY
+                    : HttpStatus.BAD_GATEWAY;
             throw new YouCamApiException(
-                    "YouCam API returned HTTP " + exception.getStatusCode().value() + ".", exception);
+                "YouCam API returned HTTP " + exception.getStatusCode().value()
+                    + formatProviderError(exception.getResponseBodyAsString()),
+                responseStatus,
+                exception);
         }
     }
 
@@ -135,7 +144,9 @@ public class YouCamSkinAnalysisService {
                 return response;
             }
             if ("error".equalsIgnoreCase(status)) {
-                throw new YouCamApiException("YouCam reported that the skin analysis task failed.");
+                throw new YouCamApiException(
+                    "YouCam reported that the skin analysis task failed" + formatProviderError(data),
+                    HttpStatus.UNPROCESSABLE_ENTITY);
             }
             waitBeforeNextPoll();
         }
@@ -157,6 +168,36 @@ public class YouCamSkinAnalysisService {
 
     private static String textAt(JsonNode node, String field) {
         return node == null ? "" : node.path(field).asText("");
+    }
+
+    private static String formatProviderError(String responseBody) {
+        try {
+            return formatProviderError(ERROR_BODY_PARSER.readTree(responseBody));
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static String formatProviderError(JsonNode response) {
+        if (response == null || response.isMissingNode() || response.isNull()) {
+            return "";
+        }
+        String code = textAt(response, "error_code");
+        String message = textAt(response, "error_message");
+        if (message.isBlank()) {
+            message = textAt(response, "error");
+        }
+        if (message.isBlank()) {
+            message = textAt(response, "message");
+        }
+        if (message.length() > 240) {
+            message = message.substring(0, 240);
+        }
+        message = message.replaceAll("[\\r\\n\\t]", " ");
+        if (code.isBlank() && message.isBlank()) {
+            return "";
+        }
+        return ": " + (code.isBlank() ? "" : "[" + code + "] ") + message;
     }
 
     private static void copyHeaders(JsonNode source, HttpHeaders destination) {
