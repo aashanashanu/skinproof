@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Archive, Camera, Clock3, FlaskConical, Info, Plus, Sparkles, X } from 'lucide-react'
+import { Archive, Beaker, Camera, Clock3, FlaskConical, Info, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { CameraSpikeView } from './CameraSpikeView'
 import { ExperimentCaptureDialog } from './ExperimentCaptureDialog'
 import { ExperimentResultsView } from './ExperimentResultsView'
+import { IngredientCheck } from './IngredientCheck'
 import { skinConcerns } from './skinConcerns'
 import './App.css'
 
@@ -37,6 +38,10 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [isIngredientCheckOpen, setIsIngredientCheckOpen] = useState(false)
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
+  const [isSeeding, setIsSeeding] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
   const [captureExperiment, setCaptureExperiment] = useState<Experiment | null>(null)
   const [resultsExperiment, setResultsExperiment] = useState<Experiment | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -140,6 +145,43 @@ function App() {
     }
   }
 
+  async function seedDemoData() {
+    setIsSeeding(true)
+    setError('')
+    try {
+      const response = await fetch('/api/demo/seed', {
+        method: 'POST',
+        headers: { 'X-Demo-Workspace': getDemoWorkspaceId() },
+      })
+      if (!response.ok) throw new Error('Demo data could not be seeded.')
+      const seeded = await response.json() as Experiment[]
+      setExperiments((current) => [...seeded, ...current])
+    } catch {
+      setError('Couldn’t seed demo data. Try again.')
+    } finally {
+      setIsSeeding(false)
+    }
+  }
+
+  async function resetDemoData() {
+    setIsResetting(true)
+    setError('')
+    try {
+      const response = await fetch('/api/demo/data', {
+        method: 'DELETE',
+        headers: { 'X-Demo-Workspace': getDemoWorkspaceId() },
+      })
+      if (!response.ok) throw new Error('Demo data could not be deleted.')
+      localStorage.removeItem(workspaceKey)
+      setExperiments([])
+      setIsResetConfirmOpen(false)
+    } catch {
+      setError('Couldn’t delete this workspace’s data. Try again.')
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
   const activeExperiments = experiments.filter((experiment) => experiment.status === 'ACTIVE')
   const archivedExperiments = experiments.filter((experiment) => experiment.status === 'ARCHIVED')
 
@@ -172,12 +214,19 @@ function App() {
             <Camera className="nav-icon" aria-hidden="true" />
             Camera test
           </button>
+          <button className={`nav-item ${isIngredientCheckOpen ? 'is-current' : ''}`} type="button" onClick={() => setIsIngredientCheckOpen(true)}>
+            <Beaker className="nav-icon" aria-hidden="true" />
+            Ingredient check
+          </button>
         </nav>
         <div className="sidebar-bottom">
           <span className="avatar" aria-hidden="true">SP</span>
           <div>
             <strong>Demo workspace</strong>
             <span>This browser profile</span>
+            <button className="text-button delete-data-link" type="button" onClick={() => setIsResetConfirmOpen(true)}>
+              <Trash2 size={11} aria-hidden="true" /> Delete my demo data
+            </button>
           </div>
         </div>
       </aside>
@@ -225,6 +274,11 @@ function App() {
               <button className="secondary-button" type="button" onClick={() => setIsFormOpen(true)}>
                 Create your first experiment
               </button>
+              {experiments.length === 0 && (
+                <button className="text-button seed-demo-button" type="button" disabled={isSeeding} onClick={() => void seedDemoData()}>
+                  {isSeeding ? 'Seeding…' : 'Or load three simulated example experiments'}
+                </button>
+              )}
             </div>
           ) : (
             <div className="experiment-list">
@@ -371,6 +425,40 @@ function App() {
           workspaceId={getDemoWorkspaceId()}
           onClose={() => setCaptureExperiment(null)}
         />
+      )}
+
+      {isIngredientCheckOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setIsIngredientCheckOpen(false)
+        }}>
+          <IngredientCheck onClose={() => setIsIngredientCheckOpen(false)} />
+        </div>
+      )}
+
+      {isResetConfirmOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !isResetting) setIsResetConfirmOpen(false)
+        }}>
+          <section className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="reset-dialog-title">
+            <div className="dialog-heading">
+              <div>
+                <p className="eyebrow">DELETE WORKSPACE DATA</p>
+                <h2 id="reset-dialog-title">Delete my demo data?</h2>
+              </div>
+              <button className="icon-button close-button" type="button" aria-label="Close" disabled={isResetting} onClick={() => setIsResetConfirmOpen(false)}><X size={17} /></button>
+            </div>
+            <p className="dialog-intro">
+              This permanently deletes every experiment, capture, and private image stored for this browser's demo
+              workspace. It cannot be undone, and this action does not affect other browser profiles.
+            </p>
+            <div className="dialog-actions">
+              <button className="secondary-button" type="button" disabled={isResetting} onClick={() => setIsResetConfirmOpen(false)}>Cancel</button>
+              <button className="primary-button delete-confirm-button" type="button" disabled={isResetting} onClick={() => void resetDemoData()}>
+                {isResetting ? 'Deleting…' : 'Delete everything'}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   )

@@ -79,6 +79,21 @@ public class CaptureEntity {
         this.takenAt = Instant.now();
     }
 
+    // Used only to seed labeled, backdated demo data; never for real provider captures.
+    public static CaptureEntity simulated(
+            ExperimentEntity experiment,
+            AnalysisEntity analysis,
+            String imageKey,
+            String imageSha256,
+            boolean baseline,
+            Instant takenAt) {
+        CaptureEntity capture = new CaptureEntity(
+                experiment, analysis, imageKey, imageSha256, "image/png", 100, "[]", baseline, true);
+        capture.simulated = true;
+        capture.takenAt = takenAt;
+        return capture;
+    }
+
     public UUID getId() { return id; }
     public ExperimentEntity getExperiment() { return experiment; }
     public AnalysisEntity getAnalysis() { return analysis; }

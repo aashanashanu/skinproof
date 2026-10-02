@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CircleAlert, Image as ImageIcon, Info } from 'lucide-react'
+import { ArrowLeft, CircleAlert, FlaskConical, Image as ImageIcon, Info } from 'lucide-react'
 import { skinConcerns } from './skinConcerns'
 
 type ExperimentForResults = {
@@ -13,6 +13,7 @@ type CaptureResult = {
   qualityScore: number
   baseline: boolean
   valid: boolean
+  simulated: boolean
   takenAt: string
   analysisStatus: 'QUEUED' | 'PROCESSING' | 'SUCCEEDED' | 'RETRY_WAIT' | 'FAILED'
   scores: Array<{
@@ -139,6 +140,12 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
       {error && (
         <div className="notice notice-error" role="alert">
           <span>{error}</span>
+        </div>
+      )}
+
+      {!isLoading && captures.some((capture) => capture.simulated) && (
+        <div className="notice notice-info" role="status">
+          <span><FlaskConical size={13} aria-hidden="true" className="notice-icon" /> This experiment uses simulated demo data for illustration. It is not a real analysis outcome.</span>
         </div>
       )}
 

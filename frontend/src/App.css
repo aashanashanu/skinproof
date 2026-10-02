@@ -1071,6 +1071,11 @@ button:disabled {
   background: #f4f8f5;
 }
 
+.notice-icon {
+  margin-right: 5px;
+  vertical-align: -2px;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -1273,4 +1278,122 @@ button:disabled {
   .comparison-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.delete-data-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 0;
+  color: #9a4938;
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.delete-data-link:hover {
+  text-decoration: underline;
+}
+
+.seed-demo-button {
+  margin-top: 4px;
+  padding: 0;
+  color: #557761;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.delete-confirm-button {
+  background: #9a4938;
+}
+
+.delete-confirm-button:hover:not(:disabled) {
+  background: #7e3a2d;
+}
+
+.ingredient-dialog {
+  width: min(100%, 540px);
+  max-height: min(90vh, 820px);
+  overflow-y: auto;
+}
+
+.ingredient-results {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.ingredient-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ingredient-match-row {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2e9e3;
+  border-radius: 6px;
+}
+
+.ingredient-match-row.is-unrecognized {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.ingredient-match-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #315c43;
+  background: #eef4f0;
+}
+
+.ingredient-match-row strong {
+  display: block;
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.ingredient-match-row p {
+  margin: 3px 0 0;
+  color: #6d7972;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.ingredient-conflict-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ingredient-conflict {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.ingredient-conflict-group_overlap,
+.ingredient-conflict-known_interaction {
+  color: #8a6829;
+  background: #faf2e1;
+}
+
+.ingredient-conflict-sensitizing {
+  color: #9a4938;
+  background: #fbe9e4;
 }

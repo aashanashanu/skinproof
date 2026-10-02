@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NoiseCalibrationRepository extends JpaRepository<NoiseCalibrationEntity, UUID> {
     Optional<NoiseCalibrationEntity> findByExperiment_IdAndConcern(UUID experimentId, String concern);
+
+    long deleteAllByExperiment_Id(UUID experimentId);
 }

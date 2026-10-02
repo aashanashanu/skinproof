@@ -1,0 +1,149 @@
+[
+  {
+    "canonicalName": "Niacinamide",
+    "aliases": ["niacinamide", "vitamin b3", "nicotinamide"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for oil control and the look of visible pores"
+  },
+  {
+    "canonicalName": "Hyaluronic Acid",
+    "aliases": ["hyaluronic acid", "sodium hyaluronate", "hyaluronan"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for surface hydration"
+  },
+  {
+    "canonicalName": "Glycolic Acid",
+    "aliases": ["glycolic acid"],
+    "irritationGroup": "AHA",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for surface exfoliation and the look of texture"
+  },
+  {
+    "canonicalName": "Lactic Acid",
+    "aliases": ["lactic acid"],
+    "irritationGroup": "AHA",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for surface exfoliation and the look of texture"
+  },
+  {
+    "canonicalName": "Mandelic Acid",
+    "aliases": ["mandelic acid"],
+    "irritationGroup": "AHA",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for surface exfoliation and the look of texture"
+  },
+  {
+    "canonicalName": "Salicylic Acid",
+    "aliases": ["salicylic acid", "bha"],
+    "irritationGroup": "BHA",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for breakouts and the look of pores"
+  },
+  {
+    "canonicalName": "Retinol",
+    "aliases": ["retinol", "retinaldehyde", "retinyl palmitate", "retinal"],
+    "irritationGroup": "RETINOID",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for the look of fine lines and texture"
+  },
+  {
+    "canonicalName": "Adapalene",
+    "aliases": ["adapalene", "differin"],
+    "irritationGroup": "RETINOID",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for breakouts"
+  },
+  {
+    "canonicalName": "Ascorbic Acid",
+    "aliases": ["ascorbic acid", "vitamin c", "l-ascorbic acid"],
+    "irritationGroup": "VITAMIN_C",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for the look of brightness and dark spots"
+  },
+  {
+    "canonicalName": "Benzoyl Peroxide",
+    "aliases": ["benzoyl peroxide"],
+    "irritationGroup": "BENZOYL_PEROXIDE",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for breakouts"
+  },
+  {
+    "canonicalName": "Azelaic Acid",
+    "aliases": ["azelaic acid"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for redness and breakouts"
+  },
+  {
+    "canonicalName": "Tranexamic Acid",
+    "aliases": ["tranexamic acid"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used for the look of dark spots"
+  },
+  {
+    "canonicalName": "Ceramides",
+    "aliases": ["ceramides", "ceramide np", "ceramide ap", "ceramide eop"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used to support the skin barrier"
+  },
+  {
+    "canonicalName": "Squalane",
+    "aliases": ["squalane"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used as a lightweight moisturizer"
+  },
+  {
+    "canonicalName": "Panthenol",
+    "aliases": ["panthenol", "pro-vitamin b5", "provitamin b5"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used to support moisture and calm the look of skin"
+  },
+  {
+    "canonicalName": "Centella Asiatica Extract",
+    "aliases": ["centella asiatica", "cica", "centella asiatica extract"],
+    "irritationGroup": null,
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used to calm the look of redness"
+  },
+  {
+    "canonicalName": "Zinc Oxide",
+    "aliases": ["zinc oxide"],
+    "irritationGroup": "MINERAL_SUNSCREEN",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used as mineral sun protection"
+  },
+  {
+    "canonicalName": "Titanium Dioxide",
+    "aliases": ["titanium dioxide"],
+    "irritationGroup": "MINERAL_SUNSCREEN",
+    "sensitizing": false,
+    "commonlyUsedFor": "commonly used as mineral sun protection"
+  },
+  {
+    "canonicalName": "Fragrance",
+    "aliases": ["fragrance", "parfum", "perfume"],
+    "irritationGroup": null,
+    "sensitizing": true,
+    "commonlyUsedFor": "commonly used as a scent ingredient; some people find it sensitizing"
+  },
+  {
+    "canonicalName": "Alcohol Denat",
+    "aliases": ["alcohol denat", "denatured alcohol", "sd alcohol 40"],
+    "irritationGroup": null,
+    "sensitizing": true,
+    "commonlyUsedFor": "commonly used as a fast-drying solvent; can be drying with frequent use"
+  },
+  {
+    "canonicalName": "Essential Oil",
+    "aliases": ["essential oil", "lavender oil", "citrus oil", "lemon oil", "orange oil"],
+    "irritationGroup": null,
+    "sensitizing": true,
+    "commonlyUsedFor": "commonly used as a fragrance source; some people find it sensitizing"
+  }
+]
