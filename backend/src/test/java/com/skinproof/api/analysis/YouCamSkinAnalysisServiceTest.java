@@ -49,6 +49,32 @@ class YouCamSkinAnalysisServiceTest {
     }
 
     @Test
+    void fallsBackToRawBodyWhenProviderErrorHasNoRecognizedFields() {
+  RestClient.Builder builder = RestClient.builder();
+  MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+  YouCamSkinAnalysisService service = new YouCamSkinAnalysisService(
+    builder,
+    new SkinAnalysisResultParser(),
+    "test-api-key",
+    Duration.ofMillis(1),
+    Duration.ofSeconds(5));
+  server.expect(requestTo("https://yce-api-01.makeupar.com/s2s/v2.0/file"))
+    .andExpect(method(POST))
+    .andRespond(withBadRequest().body("""
+      {"status":400,"reason":"face_not_detected"}
+      """).contentType(MediaType.APPLICATION_JSON));
+
+  YouCamApiException exception = assertThrows(
+    YouCamApiException.class,
+    () -> service.analyze(new byte[] {1}, "sample.png", "image/png", List.of(SkinConcern.ACNE)));
+
+  assertEquals(
+    "YouCam API returned HTTP 400: {\"status\":400,\"reason\":\"face_not_detected\"}",
+    exception.getMessage());
+  server.verify();
+    }
+
+    @Test
     void uploadsCreatesTaskPollsAndReturnsScores() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

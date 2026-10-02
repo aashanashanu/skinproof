@@ -171,11 +171,22 @@ public class YouCamSkinAnalysisService {
     }
 
     private static String formatProviderError(String responseBody) {
-        try {
-            return formatProviderError(ERROR_BODY_PARSER.readTree(responseBody));
-        } catch (Exception ignored) {
+        if (responseBody == null || responseBody.isBlank()) {
             return "";
         }
+        try {
+            String formatted = formatProviderError(ERROR_BODY_PARSER.readTree(responseBody));
+            if (!formatted.isBlank()) {
+                return formatted;
+            }
+        } catch (Exception ignored) {
+            // Fall through to the raw-body fallback below.
+        }
+        String sanitized = responseBody.replaceAll("[\\r\\n\\t]", " ").trim();
+        if (sanitized.length() > 240) {
+            sanitized = sanitized.substring(0, 240);
+        }
+        return sanitized.isBlank() ? "" : ": " + sanitized;
     }
 
     private static String formatProviderError(JsonNode response) {
