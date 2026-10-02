@@ -153,4 +153,68 @@ class YouCamSkinAnalysisServiceTest {
         assertEquals(78, response.scores().getFirst().uiScore());
         server.verify();
     }
+
+    @Test
+    void uploadsToPresignedUrlWithoutMangingItsEncodedQueryParameters() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        YouCamSkinAnalysisService service = new YouCamSkinAnalysisService(
+                builder,
+                new SkinAnalysisResultParser(),
+                "test-api-key",
+                Duration.ofMillis(1),
+                Duration.ofSeconds(5));
+        byte[] imageBytes = new byte[] { 1, 2, 3 };
+        String presignedUrl = "https://upload.example.test/file-id"
+                + "?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+                + "&X-Amz-Credential=AKIDEXAMPLE%2F20261001%2Fus-east-1%2Fs3%2Faws4_request"
+                + "&X-Amz-Date=20261001T000000Z"
+                + "&X-Amz-Expires=900"
+                + "&X-Amz-SignedHeaders=host"
+                + "&X-Amz-Signature=deadbeef";
+
+        server.expect(requestTo("https://yce-api-01.makeupar.com/s2s/v2.0/file"))
+                .andExpect(method(POST))
+                .andRespond(withSuccess("""
+                        {
+                          "data": {
+                            "files": [{
+                              "file_id": "file-id",
+                              "requests": [{
+                                "method": "PUT",
+                                "url": "%s",
+                                "headers": {}
+                              }]
+                            }]
+                          }
+                        }
+                        """.formatted(presignedUrl), MediaType.APPLICATION_JSON));
+
+        server.expect(requestTo(presignedUrl))
+                .andExpect(method(PUT))
+                .andRespond(withSuccess());
+
+        server.expect(requestTo("https://yce-api-01.makeupar.com/s2s/v2.0/task/skin-analysis"))
+                .andExpect(method(POST))
+                .andRespond(withSuccess("""
+                        {"data": {"task_id": "task-id"}}
+                        """, MediaType.APPLICATION_JSON));
+
+        server.expect(requestTo("https://yce-api-01.makeupar.com/s2s/v2.0/task/skin-analysis/task-id"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess("""
+                        {
+                          "data": {
+                            "task_status": "success",
+                            "results": {
+                              "output": [{"type": "acne", "raw_score": 72.5, "ui_score": 78, "mask_urls": []}]
+                            }
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        service.analyze(imageBytes, "sample.jpg", "image/jpeg", List.of(SkinConcern.ACNE));
+
+        server.verify();
+    }
 }

@@ -2,6 +2,7 @@ package com.skinproof.api.analysis;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -98,8 +99,9 @@ public class YouCamSkinAnalysisService {
             method = HttpMethod.PUT.name();
         }
         JsonNode signedHeaders = upload.path("headers");
+        // URI.create keeps the presigned query string opaque; re-templating it would corrupt the SigV4 signature.
         uploadClient.method(HttpMethod.valueOf(method))
-                .uri(uploadUrl)
+                .uri(URI.create(uploadUrl))
                 .headers(headers -> copyHeaders(signedHeaders, headers))
                 .body(imageBytes)
                 .retrieve()
