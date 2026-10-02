@@ -70,6 +70,14 @@ public class CaptureController {
         }
     }
 
+    @GetMapping("/api/experiments/{experimentId}/captures")
+    @Operation(summary = "List captures and analysis status for an experiment, oldest first")
+    public List<CaptureResponse> list(
+            @PathVariable UUID experimentId,
+            @RequestHeader("X-Demo-Workspace") UUID workspaceId) {
+        return captures.listCaptures(experimentId, workspaceId);
+    }
+
     @GetMapping("/api/captures/{captureId}")
     @Operation(summary = "Get capture quality and asynchronous analysis status")
     public CaptureResponse get(

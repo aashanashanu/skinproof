@@ -103,6 +103,15 @@ public class CaptureAnalysisService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
+    @Transactional(readOnly = true)
+    public List<CaptureResponse> listCaptures(UUID experimentId, UUID workspaceId) {
+        experiments.findByIdAndWorkspaceId(experimentId, workspaceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return captures.findAllByExperiment_IdOrderByTakenAtAsc(experimentId).stream()
+                .map(CaptureResponse::from)
+                .toList();
+    }
+
     @Transactional
     public CaptureResponse retryAnalysis(UUID captureId, UUID workspaceId) {
         CaptureEntity capture = captures.findByIdAndWorkspaceId(captureId, workspaceId)

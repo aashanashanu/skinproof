@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Archive, Camera, Clock3, FlaskConical, Info, Plus, Sparkles, X } from 'lucide-react'
 import { CameraSpikeView } from './CameraSpikeView'
 import { ExperimentCaptureDialog } from './ExperimentCaptureDialog'
+import { ExperimentResultsView } from './ExperimentResultsView'
 import { skinConcerns } from './skinConcerns'
 import './App.css'
 
@@ -37,6 +38,7 @@ function App() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [captureExperiment, setCaptureExperiment] = useState<Experiment | null>(null)
+  const [resultsExperiment, setResultsExperiment] = useState<Experiment | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -141,6 +143,18 @@ function App() {
   const activeExperiments = experiments.filter((experiment) => experiment.status === 'ACTIVE')
   const archivedExperiments = experiments.filter((experiment) => experiment.status === 'ARCHIVED')
 
+  if (resultsExperiment) {
+    return (
+      <div className="app-shell">
+        <ExperimentResultsView
+          experiment={resultsExperiment}
+          workspaceId={getDemoWorkspaceId()}
+          onBack={() => setResultsExperiment(null)}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -215,7 +229,19 @@ function App() {
           ) : (
             <div className="experiment-list">
               {activeExperiments.map((experiment) => (
-                <article className="experiment-row" key={experiment.id}>
+                <article
+                  className="experiment-row is-clickable"
+                  key={experiment.id}
+                  onClick={() => setResultsExperiment(experiment)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setResultsExperiment(experiment)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="experiment-symbol" aria-hidden="true"><FlaskConical size={16} /></div>
                   <div className="experiment-details">
                     <h3>{experiment.productName}</h3>
@@ -226,7 +252,7 @@ function App() {
                     <span>Started {new Date(`${experiment.startDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                   </div>
                   <div className="row-actions">
-                    <button className="capture-row-button" type="button" onClick={() => setCaptureExperiment(experiment)}>
+                    <button className="capture-row-button" type="button" onClick={(event) => { event.stopPropagation(); setCaptureExperiment(experiment) }}>
                       <Camera size={14} aria-hidden="true" /> Capture
                     </button>
                     <button
@@ -234,7 +260,7 @@ function App() {
                       type="button"
                       aria-label={`Archive ${experiment.productName}`}
                       title="Archive experiment"
-                      onClick={() => void archiveExperiment(experiment.id)}
+                      onClick={(event) => { event.stopPropagation(); void archiveExperiment(experiment.id) }}
                     >
                       <Archive size={15} aria-hidden="true" />
                     </button>

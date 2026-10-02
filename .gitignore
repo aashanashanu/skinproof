@@ -33,6 +33,9 @@ backend/build/
 *.pfx
 *.jks
 
+# Local sample face photos used for manual Camera test runs; never commit real images
+sample image/
+
 # Terraform local state, plans, and per-user variables
 infra/.terraform/
 infra/*.tfstate
