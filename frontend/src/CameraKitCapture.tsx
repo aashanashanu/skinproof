@@ -62,7 +62,7 @@ export function CameraKitCapture({ disabled = false, onCaptured }: CameraKitCapt
     const listenerIds: unknown[] = []
 
     const setupCameraKit = () => {
-      if (!isMounted) return
+      if (!isMounted || cameraKit) return
       cameraKit = window.YMK
       if (!cameraKit) {
         setStatus('error')
@@ -105,6 +105,12 @@ export function CameraKitCapture({ disabled = false, onCaptured }: CameraKitCapt
       }
     }
 
+    const handleScriptError = () => {
+      if (!isMounted) return
+      setStatus('error')
+      setError('Camera Kit could not be loaded. Use photo upload or try again later.')
+    }
+
     window.YMKAsyncInit = setupCameraKit
     if (window.YMK) {
       setupCameraKit()
@@ -115,19 +121,24 @@ export function CameraKitCapture({ disabled = false, onCaptured }: CameraKitCapt
         script.src = 'https://plugins-media.makeupar.com/v2.5-camera-kit/sdk.js'
         script.async = true
         script.dataset.skinproofCameraKit = 'true'
-        script.onerror = () => {
-          if (!isMounted) return
-          setStatus('error')
-          setError('Camera Kit could not be loaded. Use photo upload or try again later.')
-        }
         document.head.appendChild(script)
       }
+      // The SDK does not reliably invoke window.YMKAsyncInit, so also hook the script's own load event.
+      script.addEventListener('load', setupCameraKit)
+      script.addEventListener('error', handleScriptError)
+      listenerIds.push(() => {
+        script?.removeEventListener('load', setupCameraKit)
+        script?.removeEventListener('error', handleScriptError)
+      })
     }
 
     return () => {
       isMounted = false
       cameraKit?.close()
-      listenerIds.forEach((listenerId) => cameraKit?.removeEventListener(listenerId))
+      listenerIds.forEach((listenerId) => {
+        if (typeof listenerId === 'function') listenerId()
+        else cameraKit?.removeEventListener(listenerId)
+      })
       if (window.YMKAsyncInit === setupCameraKit) window.YMKAsyncInit = undefined
     }
   }, [])
