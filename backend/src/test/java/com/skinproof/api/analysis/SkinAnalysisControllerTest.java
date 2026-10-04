@@ -1,5 +1,6 @@
 package com.skinproof.api.analysis;
 
+import com.skinproof.api.auth.SecurityConfiguration;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,9 +20,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(SkinAnalysisController.class)
+@Import(SecurityConfiguration.class)
 class SkinAnalysisControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -55,6 +58,7 @@ class SkinAnalysisControllerTest {
         mockMvc.perform(multipart("/api/analysis/skin")
                         .file(sampleImage())
                         .header("X-SkinProof-Consent", "true")
+            .header("X-Demo-Workspace", java.util.UUID.randomUUID())
                         .param("concerns", "ACNE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mode").value("SD"))

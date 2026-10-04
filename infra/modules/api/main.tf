@@ -13,6 +13,8 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "random_password" "database" {
   length  = 36
   special = false
@@ -179,6 +181,125 @@ resource "aws_instance" "this" {
   ]
 
   tags = { Name = "${var.project_name}-demo-api" }
+}
+
+resource "aws_iam_role" "instance_scheduler" {
+  count = var.enable_ec2_schedule ? 1 : 0
+
+  name = "${var.project_name}-ec2-scheduler"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "scheduler.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:scheduler:${var.aws_region}:${data.aws_caller_identity.current.account_id}:schedule-group/default"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "instance_scheduler" {
+  count = var.enable_ec2_schedule ? 1 : 0
+
+  name = "${var.project_name}-ec2-scheduler"
+  role = aws_iam_role.instance_scheduler[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ec2:StartInstances", "ec2:StopInstances"]
+        Resource = aws_instance.this.arn
+      },
+      {
+        Effect = "Allow"
+        Action = ["ssm:SendCommand"]
+        Resource = [
+          aws_instance.this.arn,
+          "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_scheduler_schedule" "database_backup" {
+  count = var.enable_ec2_schedule ? 1 : 0
+
+  name                         = "${var.project_name}-database-backup"
+  description                  = "Dump PostgreSQL to the private image bucket before the nightly EC2 stop."
+  schedule_expression          = var.ec2_backup_schedule
+  schedule_expression_timezone = var.ec2_schedule_timezone
+  state                        = "ENABLED"
+
+  flexible_time_window { mode = "OFF" }
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:ssm:sendCommand"
+    role_arn = aws_iam_role.instance_scheduler[0].arn
+    input = jsonencode({
+      DocumentName = "AWS-RunShellScript"
+      InstanceIds  = [aws_instance.this.id]
+      Parameters = {
+        commands = [
+          "set -euo pipefail; key=database-backups/skinproof-db-$(date -u +%Y%m%dT%H%M%SZ).dump; docker exec -e PGPASSWORD=\"$(cat /opt/skinproof/database-password)\" skinproof-database pg_dump --format=custom --no-owner -U skinproof_app -d skinproof | aws s3 cp - s3://${var.image_bucket_name}/$key --sse AES256"
+        ]
+      }
+    })
+    retry_policy {
+      maximum_event_age_in_seconds = 3600
+      maximum_retry_attempts       = 2
+    }
+  }
+}
+
+resource "aws_scheduler_schedule" "instance_stop" {
+  count = var.enable_ec2_schedule ? 1 : 0
+
+  name                         = "${var.project_name}-ec2-stop"
+  description                  = "Stop the API EC2 instance overnight to reduce compute usage."
+  schedule_expression          = var.ec2_stop_schedule
+  schedule_expression_timezone = var.ec2_schedule_timezone
+  state                        = "ENABLED"
+
+  flexible_time_window { mode = "OFF" }
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:ec2:stopInstances"
+    role_arn = aws_iam_role.instance_scheduler[0].arn
+    input    = jsonencode({ InstanceIds = [aws_instance.this.id] })
+    retry_policy {
+      maximum_event_age_in_seconds = 3600
+      maximum_retry_attempts       = 2
+    }
+  }
+}
+
+resource "aws_scheduler_schedule" "instance_start" {
+  count = var.enable_ec2_schedule ? 1 : 0
+
+  name                         = "${var.project_name}-ec2-start"
+  description                  = "Start the API EC2 instance each morning."
+  schedule_expression          = var.ec2_start_schedule
+  schedule_expression_timezone = var.ec2_schedule_timezone
+  state                        = "ENABLED"
+
+  flexible_time_window { mode = "OFF" }
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:ec2:startInstances"
+    role_arn = aws_iam_role.instance_scheduler[0].arn
+    input    = jsonencode({ InstanceIds = [aws_instance.this.id] })
+    retry_policy {
+      maximum_event_age_in_seconds = 3600
+      maximum_retry_attempts       = 2
+    }
+  }
 }
 
 resource "aws_eip" "this" {

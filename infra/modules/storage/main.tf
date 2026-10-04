@@ -24,3 +24,32 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "images" {
     }
   }
 }
+
+resource "aws_s3_bucket_cors_configuration" "images" {
+  bucket = aws_s3_bucket.images.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD", "POST", "PUT"]
+    allowed_origins = ["https://${var.frontend_domain}"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 300
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "images" {
+  bucket = aws_s3_bucket.images.id
+
+  rule {
+    id     = "expire-database-backups-after-30-days"
+    status = "Enabled"
+
+    filter {
+      prefix = "database-backups/"
+    }
+
+    expiration {
+      days = 30
+    }
+  }
+}

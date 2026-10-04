@@ -2,6 +2,7 @@ package com.skinproof.api.demo;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.skinproof.api.auth.OwnerScope;
 import com.skinproof.api.analysis.SkinAnalysisScore;
 import com.skinproof.api.analysis.SkinConcern;
 import com.skinproof.api.capture.AnalysisEntity;
@@ -84,7 +85,12 @@ public class DemoWorkspaceService {
 
     @Transactional
     public void reset(UUID workspaceId) {
-        List<ExperimentEntity> owned = experiments.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId);
+        reset(OwnerScope.demo(workspaceId));
+    }
+
+    @Transactional
+    public void reset(OwnerScope owner) {
+        List<ExperimentEntity> owned = experiments.findAllByOwnerTypeAndOwnerId(owner.type(), owner.id());
         for (ExperimentEntity experiment : owned) {
             UUID experimentId = experiment.getId();
             verdicts.deleteAllByExperiment_Id(experimentId);

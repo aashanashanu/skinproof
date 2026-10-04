@@ -129,6 +129,31 @@
   border-bottom: 1px solid var(--line);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-topbar-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid #d7dfda;
+  border-radius: 4px;
+  color: #34413b;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.account-topbar-button:hover:not(:disabled) {
+  border-color: #9eafa4;
+  background: #f8faf8;
+}
+
 .breadcrumb,
 .privacy-status {
   color: #65706c;
@@ -837,6 +862,133 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.check-in-panel {
+  margin: 24px 0 28px;
+  padding: 16px 0 18px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.check-in-intro {
+  margin: 0 0 12px;
+  color: #6d7972;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.check-in-date-label {
+  display: flex;
+  max-width: 240px;
+  flex-direction: column;
+  gap: 5px;
+  color: #35423b;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.check-in-date-label input {
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid #d8e0db;
+  border-radius: 4px;
+  color: #28342e;
+  background: #fff;
+  font: inherit;
+}
+
+.check-in-options,
+.check-in-suggestions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 16px;
+  margin: 14px 0;
+  padding: 0;
+  border: 0;
+}
+
+.check-in-options legend,
+.check-in-suggestions legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 9px;
+  color: #35423b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.check-in-options label,
+.check-in-suggestions label {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  color: #536159;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.check-in-options input,
+.check-in-suggestions input {
+  flex: 0 0 auto;
+  accent-color: var(--forest);
+}
+
+.check-in-suggestions {
+  grid-template-columns: 1fr;
+  padding: 11px 12px;
+  border-left: 2px solid #b38c45;
+  background: #faf7ef;
+}
+
+.check-in-suggestions legend {
+  color: #725723;
+}
+
+.check-in-suggestions > p {
+  grid-column: 1;
+  margin: -4px 0 2px;
+  color: #766b52;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.check-in-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 12px;
+}
+
+.check-in-actions > span {
+  display: inline-flex;
+  align-items: start;
+  gap: 5px;
+  color: #6d7972;
+  font-size: 10px;
+}
+
+.check-in-history {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.check-in-history article {
+  display: grid;
+  gap: 3px;
+  padding: 8px 0;
+  border-top: 1px solid #e5ebe6;
+  color: #6d7972;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.check-in-history strong {
+  color: #35423b;
+  font-size: 11px;
+}
+
 .score-note {
   display: flex;
   align-items: start;
@@ -1069,6 +1221,17 @@ button:disabled {
 
   .privacy-status span {
     font-size: 9px;
+  }
+
+  .account-topbar-button {
+    width: 32px;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .account-delete-button {
+    width: 32px;
   }
 
   .section-caption {
@@ -1325,6 +1488,10 @@ button:disabled {
 
 @media (max-width: 760px) {
   .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .check-in-options {
     grid-template-columns: 1fr;
   }
 }

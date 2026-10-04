@@ -1,5 +1,7 @@
 package com.skinproof.api.verdict;
 
+import com.skinproof.api.auth.OwnerScope;
+import com.skinproof.api.auth.SecurityConfiguration;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,9 +16,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(VerdictController.class)
+@Import(SecurityConfiguration.class)
 class VerdictControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -28,7 +32,7 @@ class VerdictControllerTest {
     void getReturnsWorkspaceScopedVerdict() throws Exception {
         UUID experimentId = UUID.randomUUID();
         UUID workspaceId = UUID.randomUUID();
-        when(verdicts.getLatest(experimentId, workspaceId)).thenReturn(response());
+        when(verdicts.getLatest(experimentId, OwnerScope.demo(workspaceId))).thenReturn(response());
 
         mockMvc.perform(get("/api/experiments/{experimentId}/verdict", experimentId)
                         .header("X-Demo-Workspace", workspaceId))
@@ -36,7 +40,7 @@ class VerdictControllerTest {
                 .andExpect(jsonPath("$.label").value("INCONCLUSIVE"))
                 .andExpect(jsonPath("$.noiseFloor").value(3.0));
 
-        verify(verdicts).getLatest(experimentId, workspaceId);
+        verify(verdicts).getLatest(experimentId, OwnerScope.demo(workspaceId));
     }
 
     @Test
@@ -44,7 +48,7 @@ class VerdictControllerTest {
         UUID experimentId = UUID.randomUUID();
         UUID workspaceId = UUID.randomUUID();
         List<ConfoundFlag> confounds = List.of(new ConfoundFlag(ConfoundCode.NEW_PRODUCT));
-        when(verdicts.recompute(experimentId, workspaceId, confounds)).thenReturn(response(confounds));
+        when(verdicts.recompute(experimentId, OwnerScope.demo(workspaceId), confounds)).thenReturn(response(confounds));
 
         mockMvc.perform(post("/api/experiments/{experimentId}/verdict", experimentId)
                         .header("X-Demo-Workspace", workspaceId)
@@ -55,7 +59,7 @@ class VerdictControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.confounds[0].code").value("NEW_PRODUCT"));
 
-        verify(verdicts).recompute(experimentId, workspaceId,
+        verify(verdicts).recompute(experimentId, OwnerScope.demo(workspaceId),
                 List.of(new ConfoundFlag(ConfoundCode.NEW_PRODUCT)));
     }
 

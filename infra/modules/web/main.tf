@@ -60,7 +60,7 @@ resource "aws_cloudfront_origin_request_policy" "api" {
   headers_config {
     header_behavior = "whitelist"
     headers {
-      items = ["Accept", "Content-Type", "X-Demo-Workspace", "X-SkinProof-Consent"]
+      items = ["Accept", "Authorization", "Content-Type", "X-Demo-Workspace", "X-SkinProof-Consent"]
     }
   }
 

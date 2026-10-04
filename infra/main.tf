@@ -5,14 +5,19 @@ module "network" {
 }
 
 module "api" {
-  source            = "./modules/api"
-  project_name      = var.project_name
-  aws_region        = var.aws_region
-  instance_type     = var.instance_type
-  subnet_id         = module.network.public_subnet_id
-  security_group_id = module.network.api_security_group_id
-  image_bucket_name = module.image_storage.image_bucket_name
-  image_bucket_arn  = module.image_storage.image_bucket_arn
+  source                = "./modules/api"
+  project_name          = var.project_name
+  aws_region            = var.aws_region
+  instance_type         = var.instance_type
+  subnet_id             = module.network.public_subnet_id
+  security_group_id     = module.network.api_security_group_id
+  image_bucket_name     = module.image_storage.image_bucket_name
+  image_bucket_arn      = module.image_storage.image_bucket_arn
+  enable_ec2_schedule   = var.enable_ec2_schedule
+  ec2_schedule_timezone = var.ec2_schedule_timezone
+  ec2_start_schedule    = var.ec2_start_schedule
+  ec2_backup_schedule   = var.ec2_backup_schedule
+  ec2_stop_schedule     = var.ec2_stop_schedule
 }
 
 module "web" {
@@ -21,9 +26,17 @@ module "web" {
   api_origin_domain = module.api.origin_domain
 }
 
+module "identity" {
+  source          = "./modules/identity"
+  project_name    = var.project_name
+  aws_region      = var.aws_region
+  frontend_domain = module.web.domain_name
+}
+
 module "image_storage" {
-  source       = "./modules/storage"
-  project_name = var.project_name
+  source          = "./modules/storage"
+  project_name    = var.project_name
+  frontend_domain = module.web.domain_name
 }
 
 module "deployment" {

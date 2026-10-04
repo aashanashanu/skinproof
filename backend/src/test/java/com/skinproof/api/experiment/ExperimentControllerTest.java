@@ -1,5 +1,7 @@
 package com.skinproof.api.experiment;
 
+import com.skinproof.api.auth.OwnerType;
+import com.skinproof.api.auth.SecurityConfiguration;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -8,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,9 +21,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ExperimentController.class)
+@Import(SecurityConfiguration.class)
 class ExperimentControllerTest {
     private static final String WORKSPACE_HEADER = "X-Demo-Workspace";
 
@@ -33,13 +38,44 @@ class ExperimentControllerTest {
     @Test
     void listReturnsOnlyRecordsForRequestedWorkspace() throws Exception {
         UUID workspaceId = UUID.randomUUID();
-        when(experiments.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId)).thenReturn(List.of());
+        when(experiments.findAllByOwnerTypeAndOwnerIdOrderByCreatedAtDesc(OwnerType.DEMO, workspaceId)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/experiments").header(WORKSPACE_HEADER, workspaceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
 
-        verify(experiments).findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId);
+        verify(experiments).findAllByOwnerTypeAndOwnerIdOrderByCreatedAtDesc(OwnerType.DEMO, workspaceId);
+    }
+
+    @Test
+    void authenticatedListUsesJwtSubjectInsteadOfCallerWorkspaceHeader() throws Exception {
+        UUID userSubject = UUID.randomUUID();
+        UUID forgedWorkspace = UUID.randomUUID();
+        when(experiments.findAllByOwnerTypeAndOwnerIdOrderByCreatedAtDesc(OwnerType.USER, userSubject))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/experiments")
+                        .header(WORKSPACE_HEADER, forgedWorkspace)
+                        .with(jwt().jwt(token -> token.subject(userSubject.toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        verify(experiments).findAllByOwnerTypeAndOwnerIdOrderByCreatedAtDesc(OwnerType.USER, userSubject);
+    }
+
+    @Test
+    void claimDemoDataTransfersOnlyThePresentedLegacyWorkspaceToJwtSubject() throws Exception {
+        UUID userSubject = UUID.randomUUID();
+        UUID legacyWorkspace = UUID.randomUUID();
+        when(experiments.claimDemoWorkspace(legacyWorkspace, userSubject)).thenReturn(2);
+
+        mockMvc.perform(post("/api/experiments/claim-demo-data")
+                        .header(WORKSPACE_HEADER, legacyWorkspace)
+                        .with(jwt().jwt(token -> token.subject(userSubject.toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.claimedExperiments").value(2));
+
+        verify(experiments).claimDemoWorkspace(legacyWorkspace, userSubject);
     }
 
     @Test
@@ -65,7 +101,7 @@ class ExperimentControllerTest {
     void archiveCannotAccessExperimentOwnedByAnotherWorkspace() throws Exception {
         UUID workspaceId = UUID.randomUUID();
         UUID experimentId = UUID.randomUUID();
-        when(experiments.findByIdAndWorkspaceId(experimentId, workspaceId)).thenReturn(Optional.empty());
+        when(experiments.findByIdAndOwnerTypeAndOwnerId(experimentId, OwnerType.DEMO, workspaceId)).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/experiments/{id}/archive", experimentId)
                         .header(WORKSPACE_HEADER, workspaceId))

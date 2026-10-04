@@ -26,6 +26,9 @@ youcam:
   timeout: ${YOUCAM_TASK_TIMEOUT:PT2M}
 
 skinproof:
+  auth:
+    issuer-uri: ${SKINPROOF_AUTH_ISSUER_URI:}
+    client-id: ${SKINPROOF_AUTH_CLIENT_ID:}
   storage:
     image-bucket: ${SKINPROOF_IMAGE_BUCKET:}
   analysis:

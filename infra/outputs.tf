@@ -36,6 +36,26 @@ output "youcam_secret_name" {
   value = module.api.youcam_secret_name
 }
 
+output "cognito_user_pool_id" {
+  value = module.identity.user_pool_id
+}
+
+output "cognito_client_id" {
+  value = module.identity.client_id
+}
+
+output "cognito_issuer_url" {
+  value = module.identity.issuer_url
+}
+
+output "cognito_hosted_ui_domain" {
+  value = module.identity.hosted_ui_domain
+}
+
 output "estimated_instance_family_note" {
   value = "A t3.small is a starting point, not a cost guarantee; confirm EC2, public IPv4, storage, CloudFront, and egress in the AWS Pricing Calculator before apply."
+}
+
+output "aws_region" {
+  value = var.aws_region
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, CircleAlert, FlaskConical, Image as ImageIcon, Info } from 'lucide-react'
 import { getConcernDescription, getScoreExplanation, type AnalysisScore } from './analysisExplanations'
+import { apiHeaders } from './auth'
+import { ExperimentCheckInPanel } from './ExperimentCheckInPanel'
 import { skinConcerns } from './skinConcerns'
 
 type ExperimentForResults = {
@@ -72,10 +74,10 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
       try {
         const [capturesResponse, verdictResponse] = await Promise.all([
           fetch(`/api/experiments/${experiment.id}/captures`, {
-            headers: { 'X-Demo-Workspace': workspaceId },
+            headers: await apiHeaders(workspaceId),
           }),
           fetch(`/api/experiments/${experiment.id}/verdict`, {
-            headers: { 'X-Demo-Workspace': workspaceId },
+            headers: await apiHeaders(workspaceId),
           }),
         ])
         if (!capturesResponse.ok || !verdictResponse.ok) throw new Error('The results service is unavailable.')
@@ -115,6 +117,18 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
 
   const firstBaselinePoint = timelinePoints.find((point) => point.baseline) ?? timelinePoints[0]
   const latestPoint = timelinePoints.at(-1)
+
+  async function refreshVerdict() {
+    try {
+      const response = await fetch(`/api/experiments/${experiment.id}/verdict`, {
+        headers: await apiHeaders(workspaceId),
+      })
+      if (!response.ok) throw new Error('Verdict refresh failed.')
+      setVerdict(await response.json() as VerdictResult)
+    } catch {
+      setError('The check-in was saved, but the verdict could not be refreshed.')
+    }
+  }
 
   function findPreviousRawScore(captureIndex: number, concern: string) {
     for (let index = captureIndex - 1; index >= 0; index--) {
@@ -212,6 +226,14 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
             <div className="notice notice-error">
               <span>{failedCaptures.length} capture{failedCaptures.length === 1 ? '' : 's'} failed analysis. Retry from the capture dialog.</span>
             </div>
+          )}
+
+          {(!captures.length || captures.some((capture) => !capture.simulated)) && (
+            <ExperimentCheckInPanel
+              experimentId={experiment.id}
+              workspaceId={workspaceId}
+              onSaved={() => void refreshVerdict()}
+            />
           )}
 
           <section className="analysis-history" aria-labelledby="analysis-history-heading">

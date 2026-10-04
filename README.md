@@ -6,13 +6,15 @@ SkinProof is a measured skincare-product experiment tracker. It reports cosmetic
 
 ## What's implemented
 
-- **Experiments**: create/list/archive a product trial with a target skin concern, start date, duration, and protocol notes, scoped to an isolated per-browser demo workspace.
+- **Experiments**: create/list/archive a product trial with a target skin concern, start date, duration, and protocol notes. Authenticated records are owned by the Cognito subject; anonymous records remain in a separate demo workspace.
 - **Capture and analysis**: guided Camera Kit capture or photo upload fallback, a quality gate with explainable rejection flags, private S3 image storage behind short-lived access, and asynchronous YouCam SD skin-analysis with polling, retry, timeout, and image+concern de-duplication so a repeat upload never re-charges API units.
 - **Verdict engine**: a provider-independent Java domain service that computes baseline vs. current means, a noise floor (paired-baseline or residual-based once enough captures exist), a verdict label (`IMPROVED` / `NO_DETECTABLE_CHANGE` / `WORSE` / `INCONCLUSIVE`), a confidence level, and a plain-language explanation. See [docs/measurement-verdict.md](docs/measurement-verdict.md) for the exact rules and boundaries.
 - **Results UI**: a verdict panel with caveats and confound flags, a raw-score timeline with a shaded noise band, and a before/after comparison using the provider's own detection masks when available.
+- **Weekly check-ins (M9)**: record self-reported changes, review capture-gap and quality-drift suggestions, and explicitly confirm any suggested confound before it affects verdict confidence. Check-ins follow the owning experiment's demo or Cognito account scope.
 - **Ingredient check**: a deterministic, data-driven reference that matches a pasted ingredient list against a starter set of common actives/aliases, flags known irritation-risk combinations and sensitizing ingredients, and clearly marks unrecognized names instead of guessing. See [backend/src/main/resources/ingredient-rules.json](backend/src/main/resources/ingredient-rules.json) for the rule set.
 - **Reproducible demo data**: an empty workspace can load three clearly labeled, synthetic example experiments (one improved, one confounded/inconclusive, one in-progress) so the UI has something to show without waiting eight real weeks. Simulated data is excluded from real verdict computation and is visibly labeled everywhere it appears; see [Simulated demo data](#simulated-demo-data) below.
-- **Hosted on AWS**: the demo runs on CloudFront + S3 (frontend) and EC2 + PostgreSQL + Docker (API), with no dependency on a developer machine. See [docs/aws-demo.md](docs/aws-demo.md) for the infrastructure.
+- **Identity foundation**: Cognito User Pools sign-in uses the hosted UI with OAuth authorization code + PKCE. The API validates access-token signature, issuer, expiry, token use, and app-client ID. Signed-in requests are scoped by JWT `sub`; caller-provided workspace headers are ignored for authenticated operations. Cognito must be provisioned and its outputs configured as GitHub Actions variables before this feature is deployed.
+- **Hosted on AWS**: the demo runs on CloudFront + S3 (frontend), Cognito, and EC2 + PostgreSQL + Docker (API), with no dependency on a developer machine. See [docs/aws-demo.md](docs/aws-demo.md) for infrastructure and post-apply setup.
 
 ## Architecture
 
@@ -27,9 +29,9 @@ flowchart LR
 ```
 
 - **Frontend**: React + TypeScript (Vite), no router — a single-page experiment list with inline results/dialog views. Source in `frontend/src/`.
-- **Backend**: Spring Boot (Java 21), organized by domain package under `backend/src/main/java/com/skinproof/api/`: `experiment`, `capture`, `analysis` (YouCam adapter), `verdict`, `ingredient`, `demo` (seed/reset). PostgreSQL via Flyway migrations in `backend/src/main/resources/db/migration`.
+- **Backend**: Spring Boot (Java 21), organized by domain package under `backend/src/main/java/com/skinproof/api/`: `experiment`, `capture`, `analysis` (YouCam adapter), `verdict`, `checkin`, `ingredient`, `demo` (seed/reset). PostgreSQL via Flyway migrations in `backend/src/main/resources/db/migration`.
 - **Provider isolation**: all YouCam-specific request/response mapping lives behind `YouCamSkinAnalysisService`; the verdict engine and the rest of the app never see provider-specific shapes directly.
-- **Auth model**: a random UUID workspace ID is stored in browser `localStorage` and sent as `X-Demo-Workspace`. This separates demo data per browser profile; it is **not** authentication and must not be treated as one.
+- **Auth model**: anonymous demo mode still uses a random UUID in browser `localStorage` via `X-Demo-Workspace`; that is only a demo namespace, not authentication. Signed-in data uses the validated Cognito subject and a separate owner type. A signed-in user can claim the current browser's demo data once; possession of the legacy random workspace UUID is the migration proof, so only claim it from the browser profile that held the data.
 
 ## API summary
 
@@ -37,22 +39,26 @@ All endpoints are served under `/api` behind CloudFront; see `/swagger-ui.html` 
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET/POST /api/experiments`, `POST /api/experiments/{id}/archive` | Experiment CRUD, scoped by `X-Demo-Workspace`. |
+| `GET/POST /api/experiments`, `POST /api/experiments/{id}/archive` | Experiment CRUD, scoped by Cognito subject when signed in or `X-Demo-Workspace` in explicit demo mode. |
+| `POST /api/experiments/claim-demo-data` | Claim records in the current demo UUID namespace into the signed-in Cognito account. |
 | `POST /api/experiments/{id}/captures` | Upload a capture image with consent header, quality metadata, and target concerns; queues analysis. |
 | `GET /api/experiments/{id}/captures` | List all captures for an experiment, oldest first. |
 | `GET /api/captures/{id}`, `POST /api/captures/{id}/retry` | Check analysis status; retry a failed job. |
 | `GET/POST /api/experiments/{id}/verdict` | Read the latest verdict (computed on demand) or recompute with confound flags. |
+| `GET/POST /api/experiments/{id}/check-ins` | List or upsert a dated check-in. Automatic suggestions are stored separately and only affect verdicts after explicit confirmation. |
 | `POST /api/ingredient-check` | Match a pasted ingredient list against the starter rule set; stateless, no workspace header required. |
 | `POST /api/demo/seed` | Seed three labeled synthetic demo experiments into an **empty** workspace. |
 | `DELETE /api/demo/data` | Permanently delete every experiment, capture, image, and verdict for this workspace. |
+| `GET /api/account/me`, `DELETE /api/account/data` | Read the signed-in token subject and permanently delete that account's owned SkinProof data. |
 | `GET /api/health` | Health check used by the hosted demo and CI. |
 
 ## Privacy, consent, and retention
 
 - Capturing an image requires an explicit, separate consent checkbox before any upload; the request is rejected server-side without it.
 - Capture images are stored in a private S3 bucket (no public access, server-side encryption) and are only ever read by the backend to send to YouCam for analysis; they are not rendered back to the browser.
-- The workspace ID is a browser-profile separator, not an account or login. Do not enter sensitive personal information or photos of other people.
-- **Delete my demo data** (sidebar) permanently deletes every experiment, capture, private image, and verdict for the current browser's workspace. This cannot be undone and does not affect other browser profiles.
+- Anonymous workspace IDs remain browser-profile separators, not accounts or logins. Authenticated account data is scoped by Cognito subject. Do not enter sensitive personal information or photos of other people into the demo.
+- The demo workspace UUID remains a browser-profile separator, not an account credential. Signed-in records use the Cognito subject. Do not use the demo for sensitive personal or health information.
+- **Delete my data** (sidebar) permanently deletes every experiment, check-in, capture, private image, and verdict for the current demo workspace or signed-in account. This cannot be undone.
 - SkinProof reports cosmetic trends only. It makes no medical, diagnostic, treatment, or cure claims; see the in-app disclaimer on every page.
 
 ## Simulated demo data

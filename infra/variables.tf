@@ -58,3 +58,33 @@ variable "budget_alert_email" {
   type        = string
   default     = ""
 }
+
+variable "enable_ec2_schedule" {
+  description = "Enable a nightly database backup/EC2 stop and morning EC2 start schedule."
+  type        = bool
+  default     = false
+}
+
+variable "ec2_schedule_timezone" {
+  description = "IANA timezone used by the optional EC2 start/stop schedule."
+  type        = string
+  default     = "America/Chicago"
+}
+
+variable "ec2_start_schedule" {
+  description = "EventBridge Scheduler cron expression for starting the API instance."
+  type        = string
+  default     = "cron(0 10 * * ? *)"
+}
+
+variable "ec2_backup_schedule" {
+  description = "EventBridge Scheduler cron expression for database backup before the nightly stop."
+  type        = string
+  default     = "cron(0 22 * * ? *)"
+}
+
+variable "ec2_stop_schedule" {
+  description = "EventBridge Scheduler cron expression for stopping the API instance."
+  type        = string
+  default     = "cron(0 0 * * ? *)"
+}

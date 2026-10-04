@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Archive, Beaker, Camera, Clock3, FlaskConical, Info, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Archive, Beaker, Camera, Clock3, FlaskConical, Info, LogIn, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { CameraSpikeView } from './CameraSpikeView'
 import { ExperimentCaptureDialog } from './ExperimentCaptureDialog'
 import { ExperimentResultsView } from './ExperimentResultsView'
 import { IngredientCheck } from './IngredientCheck'
+import { apiHeaders, beginSignIn, completeSignInRedirect, identityIsConfigured, signOut, type AuthSession } from './auth'
 import { skinConcerns } from './skinConcerns'
 import './App.css'
 
@@ -42,6 +43,8 @@ function App() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
   const [isSeeding, setIsSeeding] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null)
+  const [isAuthReady, setIsAuthReady] = useState(false)
   const [captureExperiment, setCaptureExperiment] = useState<Experiment | null>(null)
   const [resultsExperiment, setResultsExperiment] = useState<Experiment | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -50,7 +53,7 @@ function App() {
   async function loadExperiments() {
     try {
       const response = await fetch('/api/experiments', {
-        headers: { 'X-Demo-Workspace': getDemoWorkspaceId() },
+        headers: await apiHeaders(getDemoWorkspaceId()),
       })
       if (!response.ok) throw new Error('The experiment service is unavailable.')
       setExperiments(await response.json() as Experiment[])
@@ -70,24 +73,41 @@ function App() {
   useEffect(() => {
     let isCurrent = true
 
-    fetch('/api/experiments', {
-      headers: { 'X-Demo-Workspace': getDemoWorkspaceId() },
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('The experiment service is unavailable.')
-        return await response.json() as Experiment[]
-      })
-      .then((data) => {
+    async function initialize() {
+      try {
+        const session = await completeSignInRedirect()
         if (!isCurrent) return
-        setExperiments(data)
-        setError('')
-      })
-      .catch(() => {
-        if (isCurrent) setError('Can’t reach the SkinProof service. Check the hosted API and try again.')
-      })
-      .finally(() => {
-        if (isCurrent) setIsLoading(false)
-      })
+        setAuthSession(session)
+
+        if (session) {
+          const claimResponse = await fetch('/api/experiments/claim-demo-data', {
+            method: 'POST',
+            headers: await apiHeaders(getDemoWorkspaceId(), {}, true),
+          })
+          if (!claimResponse.ok) throw new Error('Your sign-in worked, but demo data could not be claimed. Your previous demo workspace is unchanged.')
+        }
+
+        const response = await fetch('/api/experiments', { headers: await apiHeaders(getDemoWorkspaceId()) })
+        if (!response.ok) throw new Error('The experiment service is unavailable.')
+        if (isCurrent) {
+          setExperiments(await response.json() as Experiment[])
+          setError('')
+        }
+      } catch (initializationError) {
+        if (isCurrent) {
+          setError(initializationError instanceof Error
+            ? initializationError.message
+            : 'Can’t reach the SkinProof service. Check the hosted API and try again.')
+        }
+      } finally {
+        if (isCurrent) {
+          setIsAuthReady(true)
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void initialize()
 
     return () => {
       isCurrent = false
@@ -113,7 +133,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Demo-Workspace': getDemoWorkspaceId(),
+          ...await apiHeaders(getDemoWorkspaceId(), { 'Content-Type': 'application/json' }),
         },
         body: JSON.stringify(experiment),
       })
@@ -134,7 +154,7 @@ function App() {
     try {
       const response = await fetch(`/api/experiments/${id}/archive`, {
         method: 'POST',
-        headers: { 'X-Demo-Workspace': getDemoWorkspaceId() },
+        headers: await apiHeaders(getDemoWorkspaceId()),
       })
       if (!response.ok) throw new Error('The experiment could not be archived.')
       setExperiments((current) => current.map((experiment) => (
@@ -151,7 +171,7 @@ function App() {
     try {
       const response = await fetch('/api/demo/seed', {
         method: 'POST',
-        headers: { 'X-Demo-Workspace': getDemoWorkspaceId() },
+        headers: await apiHeaders(getDemoWorkspaceId()),
       })
       if (!response.ok) throw new Error('Demo data could not be seeded.')
       const seeded = await response.json() as Experiment[]
@@ -167,9 +187,9 @@ function App() {
     setIsResetting(true)
     setError('')
     try {
-      const response = await fetch('/api/demo/data', {
+      const response = await fetch(authSession ? '/api/account/data' : '/api/demo/data', {
         method: 'DELETE',
-        headers: { 'X-Demo-Workspace': getDemoWorkspaceId() },
+        headers: await apiHeaders(getDemoWorkspaceId()),
       })
       if (!response.ok) throw new Error('Demo data could not be deleted.')
       localStorage.removeItem(workspaceKey)
@@ -179,6 +199,23 @@ function App() {
       setError('Couldn’t delete this workspace’s data. Try again.')
     } finally {
       setIsResetting(false)
+    }
+  }
+
+  async function login() {
+    setError('')
+    try {
+      await beginSignIn()
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Could not start sign-in.')
+    }
+  }
+
+  async function logout() {
+    try {
+      await signOut()
+    } catch {
+      setError('Could not sign out. Close this browser tab to end the session.')
     }
   }
 
@@ -222,11 +259,29 @@ function App() {
         <div className="sidebar-bottom">
           <span className="avatar" aria-hidden="true">SP</span>
           <div>
-            <strong>Demo workspace</strong>
-            <span>This browser profile</span>
-            <button className="text-button delete-data-link" type="button" onClick={() => setIsResetConfirmOpen(true)}>
-              <Trash2 size={11} aria-hidden="true" /> Delete my demo data
-            </button>
+            <strong>{authSession ? 'Signed in' : 'Demo workspace'}</strong>
+            <span>{authSession?.email || 'This browser profile'}</span>
+            {authSession ? (
+              <>
+                <button className="text-button account-action-link" type="button" onClick={() => void logout()}>
+                  <LogOut size={11} aria-hidden="true" /> Sign out
+                </button>
+                <button className="text-button delete-data-link" type="button" onClick={() => setIsResetConfirmOpen(true)}>
+                  <Trash2 size={11} aria-hidden="true" /> Delete my account data
+                </button>
+              </>
+            ) : (
+              <>
+                {identityIsConfigured() && (
+                  <button className="text-button account-action-link" type="button" disabled={!isAuthReady} onClick={() => void login()}>
+                    <LogIn size={11} aria-hidden="true" /> Sign in with email
+                  </button>
+                )}
+                <button className="text-button delete-data-link" type="button" onClick={() => setIsResetConfirmOpen(true)}>
+                  <Trash2 size={11} aria-hidden="true" /> Delete my demo data
+                </button>
+              </>
+            )}
           </div>
         </div>
       </aside>
@@ -234,7 +289,23 @@ function App() {
       <main className="main-content" id="experiments">
         <header className="topbar">
           <span className="breadcrumb">Workspace <span>/</span> Experiments</span>
-          <span className="privacy-status"><span aria-hidden="true">●</span> Isolated demo data</span>
+          <div className="topbar-actions">
+            <span className="privacy-status"><span aria-hidden="true">●</span> {authSession ? `Account · ${authSession.email}` : 'Demo data · not an account'}</span>
+            {identityIsConfigured() && (authSession ? (
+              <>
+                <button className="account-topbar-button" type="button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}>
+                  <LogOut size={14} aria-hidden="true" /><span>Sign out</span>
+                </button>
+                <button className="icon-button account-delete-button" type="button" aria-label="Delete my account data" title="Delete my account data" onClick={() => setIsResetConfirmOpen(true)}>
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <button className="account-topbar-button" type="button" disabled={!isAuthReady} onClick={() => void login()}>
+                <LogIn size={14} aria-hidden="true" /><span>Sign in</span>
+              </button>
+            ))}
+          </div>
         </header>
 
         <section className="page-heading">
@@ -274,7 +345,7 @@ function App() {
               <button className="secondary-button" type="button" onClick={() => setIsFormOpen(true)}>
                 Create your first experiment
               </button>
-              {experiments.length === 0 && (
+              {experiments.length === 0 && !authSession && (
                 <button className="text-button seed-demo-button" type="button" disabled={isSeeding} onClick={() => void seedDemoData()}>
                   {isSeeding ? 'Seeding…' : 'Or load three simulated example experiments'}
                 </button>
@@ -414,7 +485,7 @@ function App() {
           if (event.target === event.currentTarget) setIsCameraOpen(false)
         }}>
           <div className="dialog camera-dialog" role="dialog" aria-modal="true" aria-labelledby="camera-spike-title">
-            <CameraSpikeView onClose={() => setIsCameraOpen(false)} />
+            <CameraSpikeView workspaceId={getDemoWorkspaceId()} onClose={() => setIsCameraOpen(false)} />
           </div>
         </div>
       )}
@@ -442,14 +513,15 @@ function App() {
           <section className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="reset-dialog-title">
             <div className="dialog-heading">
               <div>
-                <p className="eyebrow">DELETE WORKSPACE DATA</p>
-                <h2 id="reset-dialog-title">Delete my demo data?</h2>
+                <p className="eyebrow">DELETE {authSession ? 'ACCOUNT' : 'DEMO'} DATA</p>
+                <h2 id="reset-dialog-title">Delete my {authSession ? 'account' : 'demo'} data?</h2>
               </div>
               <button className="icon-button close-button" type="button" aria-label="Close" disabled={isResetting} onClick={() => setIsResetConfirmOpen(false)}><X size={17} /></button>
             </div>
             <p className="dialog-intro">
-              This permanently deletes every experiment, capture, and private image stored for this browser's demo
-              workspace. It cannot be undone, and this action does not affect other browser profiles.
+              This permanently deletes every experiment, capture, check-in, verdict, and private image {authSession
+                ? 'owned by this signed-in account.'
+                : "stored for this browser's demo workspace."} It cannot be undone.
             </p>
             <div className="dialog-actions">
               <button className="secondary-button" type="button" disabled={isResetting} onClick={() => setIsResetConfirmOpen(false)}>Cancel</button>

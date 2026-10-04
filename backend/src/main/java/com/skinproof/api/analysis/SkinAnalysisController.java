@@ -1,5 +1,6 @@
 package com.skinproof.api.analysis;
 
+import com.skinproof.api.auth.OwnerScopeResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.ByteArrayInputStream;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.imageio.ImageIO;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,6 +39,8 @@ public class SkinAnalysisController {
     public SkinAnalysisResponse analyze(
             @RequestPart("image") MultipartFile image,
             @RequestHeader(name = "X-SkinProof-Consent", defaultValue = "false") String consent,
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID demoWorkspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
             @RequestParam(name = "concerns", defaultValue = "ACNE,TEXTURE") List<SkinConcern> concerns) {
         if (!"true".equalsIgnoreCase(consent)) {
             throw new ResponseStatusException(BAD_REQUEST, "Explicit image-analysis consent is required.");
@@ -47,6 +51,7 @@ public class SkinAnalysisController {
         if (concerns.isEmpty() || concerns.size() > 16 || concerns.stream().distinct().count() != concerns.size()) {
             throw new ResponseStatusException(BAD_REQUEST, "Choose between 1 and 16 unique skin concerns.");
         }
+        OwnerScopeResolver.resolve(jwt, demoWorkspaceId);
 
         String contentType = image.getContentType();
         if (!MediaType.IMAGE_JPEG_VALUE.equalsIgnoreCase(contentType)

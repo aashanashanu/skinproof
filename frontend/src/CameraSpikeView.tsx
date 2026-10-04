@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, CircleAlert, Info, Upload, X } from 'lucide-react'
 import { CameraKitCapture } from './CameraKitCapture'
+import { apiHeaders } from './auth'
 import { skinConcerns, type SkinConcernCode } from './skinConcerns'
 
 type AnalysisScore = {
@@ -18,10 +19,11 @@ type AnalysisResponse = {
 }
 
 type CameraSpikeViewProps = {
+  workspaceId: string
   onClose: () => void
 }
 
-export function CameraSpikeView({ onClose }: CameraSpikeViewProps) {
+export function CameraSpikeView({ workspaceId, onClose }: CameraSpikeViewProps) {
   const [hasConsent, setHasConsent] = useState(false)
   const [image, setImage] = useState<File | null>(null)
   const [selectedConcerns, setSelectedConcerns] = useState<SkinConcernCode[]>(['ACNE', 'TEXTURE'])
@@ -51,7 +53,7 @@ export function CameraSpikeView({ onClose }: CameraSpikeViewProps) {
     try {
       const response = await fetch(`/api/analysis/skin?${query}`, {
         method: 'POST',
-        headers: { 'X-SkinProof-Consent': 'true' },
+        headers: await apiHeaders(workspaceId, { 'X-SkinProof-Consent': 'true' }),
         body: form,
       })
       const responseBody = await response.json() as AnalysisResponse & { message?: string; detail?: string }

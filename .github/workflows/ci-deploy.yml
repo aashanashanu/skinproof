@@ -60,12 +60,15 @@ jobs:
       CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
       ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI }}
       API_INSTANCE_ID: ${{ vars.API_INSTANCE_ID }}
+      COGNITO_HOSTED_UI_DOMAIN: ${{ vars.COGNITO_HOSTED_UI_DOMAIN }}
+      COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
+      COGNITO_ISSUER_URL: ${{ vars.COGNITO_ISSUER_URL }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Validate deployment settings
         run: |
-          for name in AWS_REGION AWS_ROLE_ARN FRONTEND_BUCKET CLOUDFRONT_DISTRIBUTION_ID ECR_REPOSITORY_URI API_INSTANCE_ID; do
+          for name in AWS_REGION AWS_ROLE_ARN FRONTEND_BUCKET CLOUDFRONT_DISTRIBUTION_ID ECR_REPOSITORY_URI API_INSTANCE_ID COGNITO_HOSTED_UI_DOMAIN COGNITO_CLIENT_ID COGNITO_ISSUER_URL; do
             if [ -z "${!name}" ]; then
               echo "Missing repository variable: $name" >&2
               exit 1
@@ -95,6 +98,9 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          export VITE_COGNITO_HOSTED_UI_DOMAIN="$COGNITO_HOSTED_UI_DOMAIN"
+          export VITE_COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID"
+          export VITE_COGNITO_ISSUER_URL="$COGNITO_ISSUER_URL"
           npm run build
           aws s3 sync dist "s3://${FRONTEND_BUCKET}" --delete --cache-control 'public,max-age=31536000,immutable'
           aws s3 cp dist/index.html "s3://${FRONTEND_BUCKET}/index.html" --cache-control 'no-cache,max-age=0'
@@ -104,7 +110,9 @@ jobs:
 
       - name: Deploy API with Systems Manager
         run: |
-          deploy_command="sudo sed -i '/awslogs-create-stream/d' /opt/skinproof/deploy.sh && sudo /opt/skinproof/deploy.sh ${ECR_REPOSITORY_URI}:${GITHUB_SHA}"
+          auth_env_args=$(printf '  --env SKINPROOF_AUTH_ISSUER_URI=%s --env SKINPROOF_AUTH_CLIENT_ID=%s \\\n' "$COGNITO_ISSUER_URL" "$COGNITO_CLIENT_ID" | base64 | tr -d '\n')
+          patch_command="sudo python3 -c 'import base64,pathlib; p=pathlib.Path(\"/opt/skinproof/deploy.sh\"); lines=p.read_text().splitlines(keepends=True); lines=[line for line in lines if not line.lstrip().startswith((\"--env SKINPROOF_AUTH_ISSUER_URI=\", \"--env SKINPROOF_AUTH_CLIENT_ID=\"))]; marker=\"--env \\\"YOUCAM_API_KEY=\"; index=next(i for i,line in enumerate(lines) if marker in line); lines[index+1:index+1]=[base64.b64decode(\"${auth_env_args}\").decode()]; p.write_text(\"\".join(lines))'"
+          deploy_command="$patch_command && sudo sed -i '/awslogs-create-stream/d' /opt/skinproof/deploy.sh && sudo /opt/skinproof/deploy.sh '${ECR_REPOSITORY_URI}:${GITHUB_SHA}'"
           params_file="$(mktemp)"
           jq -n --arg cmd "$deploy_command" '{commands: [$cmd]}' > "$params_file"
           command_id=$(aws ssm send-command \

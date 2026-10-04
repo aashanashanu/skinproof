@@ -1,5 +1,7 @@
 package com.skinproof.api.experiment;
 
+import com.skinproof.api.auth.OwnerScope;
+import com.skinproof.api.auth.OwnerType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,8 +18,15 @@ public class ExperimentEntity {
     @Id
     private UUID id;
 
-    @Column(name = "workspace_id", nullable = false)
+    @Column(name = "workspace_id")
     private UUID workspaceId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "owner_type", nullable = false, length = 16)
+    private OwnerType ownerType;
+
+    @Column(name = "owner_id", nullable = false)
+    private UUID ownerId;
 
     @Column(name = "product_name", nullable = false, length = 120)
     private String productName;
@@ -45,8 +54,14 @@ public class ExperimentEntity {
     }
 
     public ExperimentEntity(UUID workspaceId, CreateExperimentRequest request) {
+        this(OwnerScope.demo(workspaceId), request);
+    }
+
+    public ExperimentEntity(OwnerScope owner, CreateExperimentRequest request) {
         this.id = UUID.randomUUID();
-        this.workspaceId = workspaceId;
+        this.ownerType = owner.type();
+        this.ownerId = owner.id();
+        this.workspaceId = owner.type() == OwnerType.DEMO ? owner.id() : null;
         this.productName = request.productName().trim();
         this.targetConcern = request.targetConcern();
         this.startDate = request.startDate();
@@ -62,6 +77,18 @@ public class ExperimentEntity {
 
     public UUID getWorkspaceId() {
         return workspaceId;
+    }
+
+    public OwnerType getOwnerType() { return ownerType; }
+    public UUID getOwnerId() { return ownerId; }
+
+    public void transferDemoDataTo(OwnerScope owner) {
+        if (ownerType != OwnerType.DEMO || owner.type() != OwnerType.USER) {
+            throw new IllegalStateException("Only demo-owned experiments can be claimed by a user.");
+        }
+        ownerType = owner.type();
+        ownerId = owner.id();
+        workspaceId = null;
     }
 
     public String getProductName() {

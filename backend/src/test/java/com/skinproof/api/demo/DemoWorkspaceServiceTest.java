@@ -13,6 +13,7 @@ import com.skinproof.api.capture.AnalysisRepository;
 import com.skinproof.api.capture.CaptureEntity;
 import com.skinproof.api.capture.CaptureRepository;
 import com.skinproof.api.capture.PrivateImageStore;
+import com.skinproof.api.auth.OwnerType;
 import com.skinproof.api.experiment.ExperimentEntity;
 import com.skinproof.api.experiment.ExperimentRepository;
 import com.skinproof.api.experiment.ExperimentResponse;
@@ -84,7 +85,7 @@ class DemoWorkspaceServiceTest {
         ExperimentEntity experiment = org.mockito.Mockito.mock(ExperimentEntity.class);
         UUID experimentId = UUID.randomUUID();
         when(experiment.getId()).thenReturn(experimentId);
-        when(experiments.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId)).thenReturn(List.of(experiment));
+        when(experiments.findAllByOwnerTypeAndOwnerId(OwnerType.DEMO, workspaceId)).thenReturn(List.of(experiment));
 
         CaptureEntity simulatedCapture = org.mockito.Mockito.mock(CaptureEntity.class);
         when(simulatedCapture.isSimulated()).thenReturn(true);

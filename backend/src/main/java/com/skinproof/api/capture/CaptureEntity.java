@@ -65,6 +65,22 @@ public class CaptureEntity {
             String qualityFlagsJson,
             boolean baseline,
             boolean valid) {
+            this(experiment, analysis, imageKey, imageSha256, contentType, qualityScore, qualityFlagsJson,
+                baseline, valid, false, Instant.now());
+            }
+
+            public CaptureEntity(
+                ExperimentEntity experiment,
+                AnalysisEntity analysis,
+                String imageKey,
+                String imageSha256,
+                String contentType,
+                int qualityScore,
+                String qualityFlagsJson,
+                boolean baseline,
+                boolean valid,
+                boolean simulated,
+                Instant takenAt) {
         this.id = UUID.randomUUID();
         this.experiment = experiment;
         this.analysis = analysis;
@@ -75,8 +91,8 @@ public class CaptureEntity {
         this.qualityFlagsJson = qualityFlagsJson;
         this.baseline = baseline;
         this.valid = valid;
-        this.simulated = false;
-        this.takenAt = Instant.now();
+        this.simulated = simulated;
+        this.takenAt = takenAt;
     }
 
     // Used only to seed labeled, backdated demo data; never for real provider captures.
@@ -88,9 +104,7 @@ public class CaptureEntity {
             boolean baseline,
             Instant takenAt) {
         CaptureEntity capture = new CaptureEntity(
-                experiment, analysis, imageKey, imageSha256, "image/png", 100, "[]", baseline, true);
-        capture.simulated = true;
-        capture.takenAt = takenAt;
+            experiment, analysis, imageKey, imageSha256, "image/png", 100, "[]", baseline, true, true, takenAt);
         return capture;
     }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, CircleAlert, Info, RefreshCw, Upload, X } from 'lucide-react'
 import { CameraKitCapture, type CaptureQuality } from './CameraKitCapture'
 import { getConcernDescription, getScoreExplanation } from './analysisExplanations'
+import { apiHeaders } from './auth'
 import { skinConcerns, type SkinConcernCode } from './skinConcerns'
 
 type ExperimentForCapture = {
@@ -71,7 +72,7 @@ export function ExperimentCaptureDialog({ experiment, workspaceId, onClose }: Ex
         try {
           await delay(2500, controller.signal)
           const response = await fetch(`/api/captures/${currentCaptureId}`, {
-            headers: { 'X-Demo-Workspace': workspaceId },
+            headers: await apiHeaders(workspaceId),
             signal: controller.signal,
           })
           if (!response.ok) throw new Error('Unable to refresh analysis status.')
@@ -105,10 +106,9 @@ export function ExperimentCaptureDialog({ experiment, workspaceId, onClose }: Ex
     try {
       const response = await fetch(`/api/experiments/${experiment.id}/captures?${query}`, {
         method: 'POST',
-        headers: {
-          'X-Demo-Workspace': workspaceId,
+        headers: await apiHeaders(workspaceId, {
           'X-SkinProof-Consent': 'true',
-        },
+        }),
         body,
       })
       const responseBody = await response.json() as CaptureResult & { message?: string; detail?: string }
@@ -127,7 +127,7 @@ export function ExperimentCaptureDialog({ experiment, workspaceId, onClose }: Ex
     try {
       const response = await fetch(`/api/captures/${capture.captureId}/retry`, {
         method: 'POST',
-        headers: { 'X-Demo-Workspace': workspaceId },
+        headers: await apiHeaders(workspaceId),
       })
       const responseBody = await response.json() as CaptureResult & { message?: string; detail?: string }
       if (!response.ok) throw new Error(responseBody.detail ?? responseBody.message ?? 'Retry could not be queued.')

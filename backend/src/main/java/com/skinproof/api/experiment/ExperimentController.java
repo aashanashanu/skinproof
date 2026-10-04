@@ -1,9 +1,13 @@
 package com.skinproof.api.experiment;
 
+import com.skinproof.api.auth.OwnerScope;
+import com.skinproof.api.auth.OwnerScopeResolver;
+import com.skinproof.api.auth.OwnerType;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,8 +29,11 @@ public class ExperimentController {
     }
 
     @GetMapping
-    public List<ExperimentResponse> list(@RequestHeader("X-Demo-Workspace") UUID workspaceId) {
-        return experiments.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId)
+    public List<ExperimentResponse> list(
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
+        OwnerScope owner = OwnerScopeResolver.resolve(jwt, workspaceId);
+        return experiments.findAllByOwnerTypeAndOwnerIdOrderByCreatedAtDesc(owner.type(), owner.id())
                 .stream()
                 .map(ExperimentResponse::from)
                 .toList();
@@ -34,20 +41,37 @@ public class ExperimentController {
 
     @PostMapping
     public ResponseEntity<ExperimentResponse> create(
-            @RequestHeader("X-Demo-Workspace") UUID workspaceId,
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateExperimentRequest request) {
-        ExperimentEntity created = experiments.save(new ExperimentEntity(workspaceId, request));
+        OwnerScope owner = OwnerScopeResolver.resolve(jwt, workspaceId);
+        ExperimentEntity created = experiments.save(new ExperimentEntity(owner, request));
         return ResponseEntity.created(URI.create("/api/experiments/" + created.getId()))
             .body(ExperimentResponse.from(created));
     }
 
     @PostMapping("/{id}/archive")
     public ExperimentResponse archive(
-            @RequestHeader("X-Demo-Workspace") UUID workspaceId,
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID id) {
-        ExperimentEntity experiment = experiments.findByIdAndWorkspaceId(id, workspaceId)
+        OwnerScope owner = OwnerScopeResolver.resolve(jwt, workspaceId);
+        ExperimentEntity experiment = experiments.findByIdAndOwnerTypeAndOwnerId(id, owner.type(), owner.id())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
         experiment.archive();
         return ExperimentResponse.from(experiments.save(experiment));
+    }
+
+    @PostMapping("/claim-demo-data")
+    public ClaimDemoDataResponse claimDemoData(
+            @RequestHeader("X-Demo-Workspace") UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
+        OwnerScope owner = OwnerScopeResolver.resolve(jwt, null);
+        if (owner.type() != OwnerType.USER) throw new ResponseStatusException(NOT_FOUND);
+        int claimed = experiments.claimDemoWorkspace(workspaceId, owner.id());
+        return new ClaimDemoDataResponse(claimed);
+    }
+
+    public record ClaimDemoDataResponse(int claimedExperiments) {
     }
 }

@@ -2,6 +2,8 @@ package com.skinproof.api.capture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.skinproof.api.auth.OwnerScope;
+import com.skinproof.api.auth.OwnerType;
 import com.skinproof.api.analysis.SkinAnalysisResponse;
 import com.skinproof.api.analysis.SkinConcern;
 import com.skinproof.api.analysis.YouCamApiException;
@@ -57,7 +59,19 @@ public class CaptureAnalysisService {
             CaptureQualityRequest cameraQuality,
             boolean baseline,
             List<SkinConcern> concerns) {
-        ExperimentEntity experiment = experiments.findByIdAndWorkspaceId(experimentId, workspaceId)
+        return createCapture(experimentId, OwnerScope.demo(workspaceId), imageBytes, contentType, cameraQuality, baseline, concerns);
+    }
+
+    @Transactional
+    public CaptureResponse createCapture(
+            UUID experimentId,
+            OwnerScope owner,
+            byte[] imageBytes,
+            String contentType,
+            CaptureQualityRequest cameraQuality,
+            boolean baseline,
+            List<SkinConcern> concerns) {
+        ExperimentEntity experiment = findExperiment(experimentId, owner)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         CaptureQualityAssessment quality = qualityService.assess(imageBytes, cameraQuality);
         String imageHash = sha256(imageBytes);
@@ -98,14 +112,24 @@ public class CaptureAnalysisService {
 
     @Transactional(readOnly = true)
     public CaptureResponse getCapture(UUID captureId, UUID workspaceId) {
-        return captures.findByIdAndWorkspaceId(captureId, workspaceId)
+        return getCapture(captureId, OwnerScope.demo(workspaceId));
+    }
+
+    @Transactional(readOnly = true)
+    public CaptureResponse getCapture(UUID captureId, OwnerScope owner) {
+        return findCapture(captureId, owner)
                 .map(CaptureResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
     public List<CaptureResponse> listCaptures(UUID experimentId, UUID workspaceId) {
-        experiments.findByIdAndWorkspaceId(experimentId, workspaceId)
+        return listCaptures(experimentId, OwnerScope.demo(workspaceId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<CaptureResponse> listCaptures(UUID experimentId, OwnerScope owner) {
+        findExperiment(experimentId, owner)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         return captures.findAllByExperiment_IdOrderByTakenAtAsc(experimentId).stream()
                 .map(CaptureResponse::from)
@@ -114,7 +138,12 @@ public class CaptureAnalysisService {
 
     @Transactional
     public CaptureResponse retryAnalysis(UUID captureId, UUID workspaceId) {
-        CaptureEntity capture = captures.findByIdAndWorkspaceId(captureId, workspaceId)
+        return retryAnalysis(captureId, OwnerScope.demo(workspaceId));
+    }
+
+    @Transactional
+    public CaptureResponse retryAnalysis(UUID captureId, OwnerScope owner) {
+        CaptureEntity capture = findCapture(captureId, owner)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         AnalysisEntity analysis = capture.getAnalysis();
         if (analysis.getStatus() != AnalysisStatus.FAILED) {
@@ -123,6 +152,16 @@ public class CaptureAnalysisService {
         analysis.queueRetry();
         analyses.save(analysis);
         return CaptureResponse.from(capture);
+    }
+
+    private java.util.Optional<ExperimentEntity> findExperiment(UUID experimentId, OwnerScope owner) {
+        if (owner.type() == OwnerType.DEMO) return experiments.findByIdAndWorkspaceId(experimentId, owner.id());
+        return experiments.findByIdAndOwnerTypeAndOwnerId(experimentId, owner.type(), owner.id());
+    }
+
+    private java.util.Optional<CaptureEntity> findCapture(UUID captureId, OwnerScope owner) {
+        if (owner.type() == OwnerType.DEMO) return captures.findByIdAndWorkspaceId(captureId, owner.id());
+        return captures.findByIdAndOwnerTypeAndOwnerId(captureId, owner.type(), owner.id());
     }
 
     byte[] readImage(String key) {

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skinproof.api.analysis.SkinAnalysisScore;
 import com.skinproof.api.analysis.SkinConcern;
+import com.skinproof.api.auth.OwnerScope;
+import com.skinproof.api.auth.OwnerType;
 import com.skinproof.api.capture.CaptureEntity;
 import com.skinproof.api.capture.CaptureRepository;
 import com.skinproof.api.capture.AnalysisStatus;
@@ -39,10 +41,14 @@ public class VerdictService {
         this.verdicts = verdicts;
         this.engine = engine;
     }
-
     @Transactional
     public VerdictResponse getLatest(UUID experimentId, UUID workspaceId) {
-        ExperimentEntity experiment = findExperiment(experimentId, workspaceId);
+        return getLatest(experimentId, OwnerScope.demo(workspaceId));
+    }
+
+    @Transactional
+    public VerdictResponse getLatest(UUID experimentId, OwnerScope owner) {
+        ExperimentEntity experiment = findExperiment(experimentId, owner);
         String concern = targetAction(experiment);
         return verdicts.findFirstByExperiment_IdAndConcernOrderByComputedAtDesc(experimentId, concern)
                 .map(VerdictResponse::from)
@@ -51,7 +57,12 @@ public class VerdictService {
 
     @Transactional
     public VerdictResponse recompute(UUID experimentId, UUID workspaceId, List<ConfoundFlag> confounds) {
-        return recompute(findExperiment(experimentId, workspaceId), confounds == null ? List.of() : confounds);
+        return recompute(experimentId, OwnerScope.demo(workspaceId), confounds);
+    }
+
+    @Transactional
+    public VerdictResponse recompute(UUID experimentId, OwnerScope owner, List<ConfoundFlag> confounds) {
+        return recompute(findExperiment(experimentId, owner), confounds == null ? List.of() : confounds);
     }
 
     @Transactional
@@ -88,8 +99,12 @@ public class VerdictService {
         return VerdictResponse.from(saved);
     }
 
-    private ExperimentEntity findExperiment(UUID experimentId, UUID workspaceId) {
-        return experiments.findByIdAndWorkspaceId(experimentId, workspaceId)
+    private ExperimentEntity findExperiment(UUID experimentId, OwnerScope owner) {
+        if (owner.type() == OwnerType.DEMO) {
+            return experiments.findByIdAndWorkspaceId(experimentId, owner.id())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        }
+        return experiments.findByIdAndOwnerTypeAndOwnerId(experimentId, owner.type(), owner.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 

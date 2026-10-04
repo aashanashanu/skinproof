@@ -1,7 +1,9 @@
 package com.skinproof.api.verdict;
 
+import com.skinproof.api.auth.OwnerScopeResolver;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,20 +26,22 @@ public class VerdictController {
     @GetMapping
     public VerdictResponse get(
             @PathVariable UUID experimentId,
-            @RequestHeader("X-Demo-Workspace") UUID workspaceId) {
-        return verdicts.getLatest(experimentId, workspaceId);
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
+        return verdicts.getLatest(experimentId, OwnerScopeResolver.resolve(jwt, workspaceId));
     }
 
     @PostMapping
     public VerdictResponse recompute(
             @PathVariable UUID experimentId,
-            @RequestHeader("X-Demo-Workspace") UUID workspaceId,
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
             @RequestBody(required = false) VerdictRecomputeRequest request) {
         List<ConfoundFlag> confounds = request == null ? List.of() : request.confounds().stream()
             .map(ConfoundFlag::new)
             .toList();
         try {
-            return verdicts.recompute(experimentId, workspaceId, confounds);
+            return verdicts.recompute(experimentId, OwnerScopeResolver.resolve(jwt, workspaceId), confounds);
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
         }
