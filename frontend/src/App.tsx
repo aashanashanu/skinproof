@@ -4,7 +4,7 @@ import { CameraSpikeView } from './CameraSpikeView'
 import { ExperimentCaptureDialog } from './ExperimentCaptureDialog'
 import { ExperimentResultsView } from './ExperimentResultsView'
 import { IngredientCheck } from './IngredientCheck'
-import { apiHeaders, beginSignIn, completeSignInRedirect, identityIsConfigured, signOut, type AuthSession } from './auth'
+import { apiHeaders, beginSignIn, completeSignInRedirect, currentSession, identityIsConfigured, signOut, type AuthSession } from './auth'
 import { skinConcerns } from './skinConcerns'
 import './App.css'
 
@@ -75,17 +75,23 @@ function App() {
 
     async function initialize() {
       try {
+        if (!identityIsConfigured()) {
+          throw new Error('Account sign-in is not configured. Please try again later.')
+        }
         const session = await completeSignInRedirect()
         if (!isCurrent) return
+        if (!session) {
+          setAuthSession(null)
+          setExperiments([])
+          return
+        }
         setAuthSession(session)
 
-        if (session) {
-          const claimResponse = await fetch('/api/experiments/claim-demo-data', {
-            method: 'POST',
-            headers: await apiHeaders(getDemoWorkspaceId(), {}, true),
-          })
-          if (!claimResponse.ok) throw new Error('Your sign-in worked, but demo data could not be claimed. Your previous demo workspace is unchanged.')
-        }
+        const claimResponse = await fetch('/api/experiments/claim-demo-data', {
+          method: 'POST',
+          headers: await apiHeaders(getDemoWorkspaceId(), {}, true),
+        })
+        if (!claimResponse.ok) throw new Error('Your sign-in worked, but demo data could not be claimed. Your previous demo workspace is unchanged.')
 
         const response = await fetch('/api/experiments', { headers: await apiHeaders(getDemoWorkspaceId()) })
         if (!response.ok) throw new Error('The experiment service is unavailable.')
@@ -113,6 +119,31 @@ function App() {
       isCurrent = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!authSession) return
+    let isCurrent = true
+
+    async function validateSession() {
+      try {
+        const session = await currentSession()
+        if (isCurrent && session) setAuthSession(session)
+      } catch {
+        if (!isCurrent) return
+        setAuthSession(null)
+        setExperiments([])
+        setCaptureExperiment(null)
+        setResultsExperiment(null)
+        setError('Your sign-in expired. Sign in again to continue.')
+      }
+    }
+
+    const interval = window.setInterval(() => { void validateSession() }, 30_000)
+    return () => {
+      isCurrent = false
+      window.clearInterval(interval)
+    }
+  }, [authSession])
 
   async function createExperiment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -209,6 +240,43 @@ function App() {
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Could not start sign-in.')
     }
+  }
+
+  if (!isAuthReady || isLoading) {
+    return (
+      <main className="auth-gate" aria-live="polite">
+        <a className="brand auth-gate-brand" href="/" aria-label="SkinProof home">
+          <span className="brand-mark" aria-hidden="true">S</span>
+          <span>skinproof</span>
+        </a>
+        <p className="eyebrow">ACCOUNT REQUIRED</p>
+        <h1>Checking your sign-in</h1>
+        <p className="page-summary">Your experiments are available after your account is verified.</p>
+      </main>
+    )
+  }
+
+  if (!authSession) {
+    return (
+      <main className="auth-gate" aria-labelledby="auth-gate-title">
+        <a className="brand auth-gate-brand" href="/" aria-label="SkinProof home">
+          <span className="brand-mark" aria-hidden="true">S</span>
+          <span>skinproof</span>
+        </a>
+        <p className="eyebrow">ACCOUNT REQUIRED</p>
+        <h1 id="auth-gate-title">{identityIsConfigured() ? 'Sign in to continue' : 'Sign-in is unavailable'}</h1>
+        <p className="page-summary">{identityIsConfigured()
+          ? 'Your experiments and skin-analysis results are available only to your signed-in account.'
+          : 'Account sign-in has not been configured for this deployment. Please try again later.'}</p>
+        {error && <div className="notice notice-error" role="alert">{error}</div>}
+        {identityIsConfigured() && (
+          <button className="primary-button auth-gate-button" type="button" onClick={() => void login()}>
+            <LogIn size={15} aria-hidden="true" /> Sign in with email
+          </button>
+        )}
+        <p className="score-note auth-gate-note"><Info size={13} aria-hidden="true" /> SkinProof tracks cosmetic trends, not medical advice.</p>
+      </main>
+    )
   }
 
   async function logout() {
