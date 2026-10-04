@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, CircleAlert, Info, RefreshCw, Upload, X } from 'lucide-react'
 import { CameraKitCapture, type CaptureQuality } from './CameraKitCapture'
+import { getConcernDescription, getScoreExplanation } from './analysisExplanations'
 import { skinConcerns, type SkinConcernCode } from './skinConcerns'
 
 type ExperimentForCapture = {
@@ -207,11 +208,16 @@ export function ExperimentCaptureDialog({ experiment, workspaceId, onClose }: Ex
             {capture.analysisStatus === 'SUCCEEDED' && (
               <div className="score-list">
                 {capture.scores.map((score) => (
-                  <div className="score-row" key={score.concern}>
-                    <strong>{skinConcerns.find((item) => item.action === score.concern)?.label ?? score.concern}</strong>
-                    <span>Raw {score.rawScore?.toFixed(1) ?? 'n/a'}</span>
-                    <span>UI {score.uiScore ?? 'n/a'}</span>
-                    <span>{score.maskUrls.length} mask{score.maskUrls.length === 1 ? '' : 's'}</span>
+                  <div className="analysis-score-item" key={score.concern}>
+                    <div className="score-row">
+                      <strong>{skinConcerns.find((item) => item.action === score.concern)?.label ?? score.concern}</strong>
+                      <span>Raw {score.rawScore?.toFixed(1) ?? 'n/a'}</span>
+                      <span>UI {score.uiScore ?? 'n/a'}</span>
+                      <span>{score.maskUrls.length} mask{score.maskUrls.length === 1 ? '' : 's'}</span>
+                    </div>
+                    <p className="analysis-explanation">
+                      {getConcernDescription(score.concern)} {getScoreExplanation(score)}
+                    </p>
                   </div>
                 ))}
                 <p className="score-note"><Info size={13} /> Raw scores are used for trend calculations.</p>

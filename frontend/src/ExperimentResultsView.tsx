@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, CircleAlert, FlaskConical, Image as ImageIcon, Info } from 'lucide-react'
+import { getConcernDescription, getScoreExplanation, type AnalysisScore } from './analysisExplanations'
 import { skinConcerns } from './skinConcerns'
 
 type ExperimentForResults = {
@@ -16,12 +17,7 @@ type CaptureResult = {
   simulated: boolean
   takenAt: string
   analysisStatus: 'QUEUED' | 'PROCESSING' | 'SUCCEEDED' | 'RETRY_WAIT' | 'FAILED'
-  scores: Array<{
-    concern: string
-    rawScore: number | null
-    uiScore: number | null
-    maskUrls: string[]
-  }>
+  scores: AnalysisScore[]
 }
 
 type VerdictResult = {
@@ -106,7 +102,8 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
 
   const pendingCaptures = captures.filter((capture) => capture.analysisStatus === 'QUEUED' || capture.analysisStatus === 'PROCESSING' || capture.analysisStatus === 'RETRY_WAIT')
   const failedCaptures = captures.filter((capture) => capture.analysisStatus === 'FAILED')
-  const timelinePoints = captures
+  const orderedCaptures = [...captures].sort((first, second) => Date.parse(first.takenAt) - Date.parse(second.takenAt))
+  const timelinePoints = orderedCaptures
     .filter((capture) => capture.valid && capture.analysisStatus === 'SUCCEEDED')
     .map((capture) => ({
       takenAt: capture.takenAt,
@@ -118,6 +115,18 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
 
   const firstBaselinePoint = timelinePoints.find((point) => point.baseline) ?? timelinePoints[0]
   const latestPoint = timelinePoints.at(-1)
+
+  function findPreviousRawScore(captureIndex: number, concern: string) {
+    for (let index = captureIndex - 1; index >= 0; index--) {
+      const previousCapture = orderedCaptures[index]
+      if (!previousCapture.valid || previousCapture.analysisStatus !== 'SUCCEEDED') continue
+      const previousScore = previousCapture.scores.find((score) => score.concern === concern)?.rawScore
+      if (previousScore !== null && previousScore !== undefined && Number.isFinite(previousScore)) {
+        return previousScore
+      }
+    }
+    return null
+  }
 
   return (
     <main className="main-content" id="experiment-results">
@@ -204,6 +213,53 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
               <span>{failedCaptures.length} capture{failedCaptures.length === 1 ? '' : 's'} failed analysis. Retry from the capture dialog.</span>
             </div>
           )}
+
+          <section className="analysis-history" aria-labelledby="analysis-history-heading">
+            <div className="section-heading">
+              <div className="section-title-group">
+                <h2 id="analysis-history-heading">Analysis details</h2>
+              </div>
+              <span className="section-caption">What each result means</span>
+            </div>
+            {orderedCaptures.map((capture, captureIndex) => (
+              <details className="analysis-capture-detail" key={capture.captureId} open={captureIndex === orderedCaptures.length - 1}>
+                <summary>
+                  <span>{new Date(capture.takenAt).toLocaleDateString()} · {capture.baseline ? 'Baseline' : 'Follow-up'}</span>
+                  <span>{capture.analysisStatus.toLowerCase().replaceAll('_', ' ')}</span>
+                </summary>
+                {capture.simulated && <p className="analysis-explanation">Synthetic example data; this is not a real analysis.</p>}
+                {!capture.valid && <p className="analysis-explanation">This capture did not pass quality checks and is not included in the experiment trend.</p>}
+                {capture.analysisStatus === 'SUCCEEDED' ? (
+                  <div className="score-list analysis-history-scores">
+                    {capture.scores.map((score) => {
+                      const previousRawScore = capture.valid && score.rawScore !== null
+                        ? findPreviousRawScore(captureIndex, score.concern)
+                        : null
+                      const noComparisonNote = capture.valid
+                        ? 'There is no earlier valid score for this concern.'
+                        : 'This capture is not used for trend comparisons because it did not pass quality checks.'
+                      return (
+                        <div className="analysis-score-item" key={score.concern}>
+                          <div className="score-row">
+                            <strong>{skinConcerns.find((item) => item.action === score.concern)?.label ?? score.concern}</strong>
+                            <span>Raw {score.rawScore?.toFixed(1) ?? 'n/a'}</span>
+                            <span>UI {score.uiScore ?? 'n/a'}</span>
+                            <span>{score.maskUrls.length} mask{score.maskUrls.length === 1 ? '' : 's'}</span>
+                          </div>
+                          <p className="analysis-explanation">
+                            {getConcernDescription(score.concern)}{' '}
+                            {getScoreExplanation(score, previousRawScore, noComparisonNote)}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="analysis-explanation">No concern scores are available because this analysis has not completed successfully.</p>
+                )}
+              </details>
+            ))}
+          </section>
 
           <section className="timeline-section" aria-labelledby="timeline-heading">
             <div className="section-heading">
