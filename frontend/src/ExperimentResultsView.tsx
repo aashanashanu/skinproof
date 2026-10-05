@@ -4,7 +4,6 @@ import { getConcernDescription, getScoreExplanation, type AnalysisScore } from '
 import { apiHeaders } from './auth'
 import { ExperimentCheckInPanel } from './ExperimentCheckInPanel'
 import { ShareReportPanel } from './ShareReportPanel'
-import { ShareReportPanel } from './ShareReportPanel'
 import { skinConcerns } from './skinConcerns'
 
 type ExperimentForResults = {
