@@ -76,6 +76,26 @@ data "aws_cloudfront_cache_policy" "optimized" {
   name = "Managed-CachingOptimized"
 }
 
+resource "aws_cloudfront_response_headers_policy" "same_origin_frames" {
+  name    = "${var.project_name}-same-origin-frames"
+  comment = "Only same-origin report pages may be framed for the retailer mock."
+
+  security_headers_config {
+    content_security_policy {
+      content_security_policy = "frame-ancestors 'self';"
+      override                = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "X-Robots-Tag"
+      value    = "noindex, nofollow, noarchive"
+      override = true
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "this" {
   enabled             = true
   comment             = "SkinProof demo"
@@ -101,12 +121,13 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   default_cache_behavior {
-    target_origin_id       = "frontend-s3"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
+    target_origin_id           = "frontend-s3"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.optimized.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.same_origin_frames.id
   }
 
   ordered_cache_behavior {

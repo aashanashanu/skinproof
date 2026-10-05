@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.skinproof.api.demo.DemoWorkspaceService;
+import com.skinproof.api.reminder.ReminderPreferenceService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,9 @@ class AccountControllerTest {
 
     @MockitoBean
     private DemoWorkspaceService data;
+
+    @MockitoBean
+    private ReminderPreferenceService reminderPreferences;
 
     @Test
     void profileReturnsAuthenticatedSubject() throws Exception {
@@ -45,5 +49,6 @@ class AccountControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(data).reset(OwnerScope.user(subject));
+        verify(reminderPreferences).delete(subject);
     }
 }

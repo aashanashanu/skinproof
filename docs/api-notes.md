@@ -6,7 +6,7 @@ Status: **live UI sample runs completed on 2026-10-02 (deployed app, Camera test
 
 Scope executed in deployed app:
 
-1. Opened Camera test in `[hosted demo endpoint omitted]`.
+1. Opened Camera test in the hosted CloudFront deployment.
 2. Ticked explicit consent checkbox.
 3. Uploaded three approved local samples from `sample image/`.
 4. Used the same two SD concerns for all runs: `EYE_BAG` and `TEXTURE`.

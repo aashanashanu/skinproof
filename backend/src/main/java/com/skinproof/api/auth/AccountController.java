@@ -1,6 +1,7 @@
 package com.skinproof.api.auth;
 
 import com.skinproof.api.demo.DemoWorkspaceService;
+import com.skinproof.api.reminder.ReminderPreferenceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
@@ -11,15 +12,18 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/account")
 @Tag(name = "Account", description = "Cognito-authenticated account profile and owned-data controls")
 public class AccountController {
     private final DemoWorkspaceService data;
+    private final ReminderPreferenceService reminderPreferences;
 
-    public AccountController(DemoWorkspaceService data) {
+    public AccountController(DemoWorkspaceService data, ReminderPreferenceService reminderPreferences) {
         this.data = data;
+        this.reminderPreferences = reminderPreferences;
     }
 
     @GetMapping("/me")
@@ -31,8 +35,11 @@ public class AccountController {
 
     @DeleteMapping("/data")
     @Operation(summary = "Permanently delete all experiments, captures, private images, and verdict data owned by this account")
+    @Transactional
     public ResponseEntity<Void> deleteOwnedData(@AuthenticationPrincipal Jwt jwt) {
-        data.reset(requireUser(jwt));
+        OwnerScope owner = requireUser(jwt);
+        data.reset(owner);
+        reminderPreferences.delete(owner.id());
         return ResponseEntity.noContent().build();
     }
 

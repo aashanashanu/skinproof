@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Archive, Beaker, Camera, Clock3, FlaskConical, Info, LogIn, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Archive, Beaker, Bell, Camera, Clock3, FlaskConical, Info, LogIn, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { CameraSpikeView } from './CameraSpikeView'
 import { ExperimentCaptureDialog } from './ExperimentCaptureDialog'
 import { ExperimentResultsView } from './ExperimentResultsView'
 import { IngredientCheck } from './IngredientCheck'
 import { apiHeaders, beginSignIn, completeSignInRedirect, currentSession, identityIsConfigured, signOut, type AuthSession } from './auth'
+import { SharedReportView } from './SharedReportView'
+import { ReminderPreferencesDialog } from './ReminderPreferencesDialog'
 import { skinConcerns } from './skinConcerns'
 import './App.css'
 
@@ -35,12 +37,14 @@ function getDemoWorkspaceId() {
 }
 
 function App() {
+  const [sharedToken] = useState(() => new URLSearchParams(window.location.search).get('share'))
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [isIngredientCheckOpen, setIsIngredientCheckOpen] = useState(false)
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
+  const [isReminderSettingsOpen, setIsReminderSettingsOpen] = useState(false)
   const [isSeeding, setIsSeeding] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [authSession, setAuthSession] = useState<AuthSession | null>(null)
@@ -75,6 +79,7 @@ function App() {
 
     async function initialize() {
       try {
+        if (sharedToken) return
         if (!identityIsConfigured()) {
           throw new Error('Account sign-in is not configured. Please try again later.')
         }
@@ -118,7 +123,7 @@ function App() {
     return () => {
       isCurrent = false
     }
-  }, [])
+  }, [sharedToken])
 
   useEffect(() => {
     if (!authSession) return
@@ -242,6 +247,10 @@ function App() {
     }
   }
 
+  if (sharedToken) {
+    return <SharedReportView token={sharedToken} embed={new URLSearchParams(window.location.search).get('embed') === '1'} />
+  }
+
   if (!isAuthReady || isLoading) {
     return (
       <main className="auth-gate" aria-live="polite">
@@ -363,6 +372,9 @@ function App() {
               <>
                 <button className="account-topbar-button" type="button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}>
                   <LogOut size={14} aria-hidden="true" /><span>Sign out</span>
+                </button>
+                <button className="account-topbar-button" type="button" onClick={() => setIsReminderSettingsOpen(true)}>
+                  <Bell size={14} aria-hidden="true" /><span>Reminders</span>
                 </button>
                 <button className="icon-button account-delete-button" type="button" aria-label="Delete my account data" title="Delete my account data" onClick={() => setIsResetConfirmOpen(true)}>
                   <Trash2 size={14} aria-hidden="true" />
@@ -588,7 +600,7 @@ function App() {
             </div>
             <p className="dialog-intro">
               This permanently deletes every experiment, capture, check-in, verdict, and private image {authSession
-                ? 'owned by this signed-in account.'
+                ? 'owned by this signed-in account, along with its reminder preferences.'
                 : "stored for this browser's demo workspace."} It cannot be undone.
             </p>
             <div className="dialog-actions">
@@ -599,6 +611,10 @@ function App() {
             </div>
           </section>
         </div>
+      )}
+
+      {isReminderSettingsOpen && authSession && (
+        <ReminderPreferencesDialog workspaceId={getDemoWorkspaceId()} onClose={() => setIsReminderSettingsOpen(false)} />
       )}
     </div>
   )

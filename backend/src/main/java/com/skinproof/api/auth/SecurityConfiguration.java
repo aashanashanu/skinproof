@@ -31,7 +31,7 @@ public class SecurityConfiguration {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/health", "/api/ingredient-check", "/api/analysis/skin", "/swagger-ui.html", "/swagger-ui/**", "/api-docs/**")
+                        .requestMatchers("/api/health", "/api/ingredient-check", "/api/analysis/skin", "/api/shared-reports/**", "/swagger-ui.html", "/swagger-ui/**", "/api-docs/**")
                         .permitAll()
                         .anyRequest().access((authentication, context) -> {
                             if (authentication.get() instanceof JwtAuthenticationToken) {

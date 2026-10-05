@@ -2,7 +2,7 @@
 
 SkinProof is a measured skincare-product experiment tracker. It reports cosmetic trends with explicit uncertainty — it is not medical advice, not a diagnostic tool, and does not make treatment or cure claims.
 
-**Live demo:** [hosted demo endpoint omitted]
+**Hosted demo:** The endpoint is omitted from this document. Retrieve it from the configured deployment's Terraform output.
 
 ## What's implemented
 
@@ -14,6 +14,7 @@ SkinProof is a measured skincare-product experiment tracker. It reports cosmetic
 - **Ingredient check**: a deterministic, data-driven reference that matches a pasted ingredient list against a starter set of common actives/aliases, flags known irritation-risk combinations and sensitizing ingredients, and clearly marks unrecognized names instead of guessing. See [backend/src/main/resources/ingredient-rules.json](backend/src/main/resources/ingredient-rules.json) for the rule set.
 - **Reproducible demo data**: an empty workspace can load three clearly labeled, synthetic example experiments (one improved, one confounded/inconclusive, one in-progress) so the UI has something to show without waiting eight real weeks. Simulated data is excluded from real verdict computation and is visibly labeled everywhere it appears; see [Simulated demo data](#simulated-demo-data) below.
 - **Identity foundation**: Cognito User Pools sign-in uses the hosted UI with OAuth authorization code + PKCE. The API validates access-token signature, issuer, expiry, token use, and app-client ID. Signed-in requests are scoped by JWT `sub`; caller-provided workspace headers are ignored for authenticated operations. Cognito must be provisioned and its outputs configured as GitHub Actions variables before this feature is deployed.
+- **Shareable reports**: signed-in owners can create a frozen 30-day report link, revoke it, and choose whether to include source images. Links are high-entropy and hash-only at rest; public output omits private notes, provider task IDs, S3 keys, and masks. Opted-in image links are presigned for 15 minutes. The same public snapshot supports an iframe-style retailer mock and browser print-to-PDF.
 - **Hosted on AWS**: the demo runs on CloudFront + S3 (frontend), Cognito, and EC2 + PostgreSQL + Docker (API), with no dependency on a developer machine. See [docs/aws-demo.md](docs/aws-demo.md) for infrastructure and post-apply setup.
 
 ## Architecture
@@ -50,6 +51,9 @@ All endpoints are served under `/api` behind CloudFront; see `/swagger-ui.html` 
 | `POST /api/demo/seed` | Seed three labeled synthetic demo experiments into an **empty** workspace. |
 | `DELETE /api/demo/data` | Permanently delete every experiment, capture, image, and verdict for this workspace. |
 | `GET /api/account/me`, `DELETE /api/account/data` | Read the signed-in token subject and permanently delete that account's owned SkinProof data. |
+| `GET/POST /api/experiments/{id}/reports`, `DELETE /api/reports/{id}` | List share status, create, or revoke an immutable owner-scoped report link. |
+| `GET /api/shared-reports/{token}` | Public read-only report snapshot, `no-store` and `noindex`; invalid, revoked, and expired links return the same unavailable response. |
+| `GET/PUT /api/account/reminder-preferences` | Read or update the signed-in account's explicit reminder opt-in and local schedule. No email delivery is active. |
 | `GET /api/health` | Health check used by the hosted demo and CI. |
 
 ## Privacy, consent, and retention
@@ -58,6 +62,7 @@ All endpoints are served under `/api` behind CloudFront; see `/swagger-ui.html` 
 - Capture images are stored in a private S3 bucket (no public access, server-side encryption) and are only ever read by the backend to send to YouCam for analysis; they are not rendered back to the browser.
 - Anonymous workspace IDs remain browser-profile separators, not accounts or logins. Authenticated account data is scoped by Cognito subject. Do not enter sensitive personal information or photos of other people into the demo.
 - The demo workspace UUID remains a browser-profile separator, not an account credential. Signed-in records use the Cognito subject. Do not use the demo for sensitive personal or health information.
+- Shared reports are frozen at creation and expire after 30 days. Revoke invalidates the report token immediately; already issued image URLs can remain valid for up to 15 minutes. Images are excluded unless the owner checks the opt-in box.
 - **Delete my data** (sidebar) permanently deletes every experiment, check-in, capture, private image, and verdict for the current demo workspace or signed-in account. This cannot be undone.
 - SkinProof reports cosmetic trends only. It makes no medical, diagnostic, treatment, or cure claims; see the in-app disclaimer on every page.
 

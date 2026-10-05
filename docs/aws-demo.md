@@ -6,7 +6,7 @@ The demo is designed to run without a developer machine hosting the app. Terrafo
 
 Do not run `terraform apply` until the AWS Pricing Calculator has been checked for the chosen region, EC2 instance, public IPv4 address, EBS volume, ECR storage, CloudFront usage, S3 usage, and data transfer. The $25 AWS Budget is an alert, not a hard cap; actual charges can exceed it. Email notifications are created only when `budget_alert_email` is set. `t3.small` is a starting point, not a verified estimate.
 
-The demo environment is live at `[hosted demo endpoint omitted]`; AWS resources and charges are active. Review the full Terraform plan before applying infrastructure changes. In particular, a change to EC2 `user_data` replaces the instance and its local database volume, so do not apply a plan containing that replacement without a deliberate migration. The image bucket is intentionally not force-destroyed, so remove its objects deliberately before teardown. Terraform state contains generated database credentials and must be kept private; configure encrypted remote state before treating this as production infrastructure.
+The demo environment is active; retrieve its frontend URL with `terraform -chdir=infra output -raw cloudfront_domain`. AWS resources and charges are active. Review the full Terraform plan before applying infrastructure changes. In particular, a change to EC2 `user_data` replaces the instance and its local database volume, so do not apply a plan containing that replacement without a deliberate migration. The image bucket is intentionally not force-destroyed, so remove its objects deliberately before teardown. Terraform state contains generated database credentials and must be kept private; configure encrypted remote state before treating this as production infrastructure.
 
 ## Database choice and cost reduction
 
@@ -46,6 +46,7 @@ From the repository root, configure `infra/terraform.tfvars` first, then use:
 - `modules/api`: ECR, database and YouCam API-key secrets, EC2 instance and Elastic IP, instance IAM profile, CloudWatch logs, and boot/deploy scripts.
 - `modules/identity`: Cognito User Pool, public SPA app client, hosted UI domain, verified-email sign-up, and exact CloudFront callback/logout URLs.
 - `modules/web`: private frontend bucket, CloudFront distribution, and `/api/*` origin behavior.
+- The frontend CloudFront behavior sets `X-Robots-Tag: noindex` and permits same-origin framing only; third-party retailer origins are not enabled.
 - `modules/storage`: private, encrypted image bucket and browser upload CORS policy.
 - `modules/deployment`: GitHub OIDC provider, least-privilege deployment role, and policy.
 - `modules/budget`: monthly budget and optional email alerts.
@@ -75,3 +76,4 @@ The first GitHub OIDC deployment provider is account-level. If that identity pro
 - Cognito SPA sign-in uses authorization code + PKCE; the app client has no client secret. The API validates access-token issuer, signature, expiry, token-use, and client ID. Never put the user-pool app client secret or YouCam credentials in frontend configuration.
 - Existing demo data can be claimed by signing in from the same browser profile, which sends the legacy random UUID as migration proof once. That UUID was a bearer capability in demo mode; do not copy/share it. New authenticated records are stored under the Cognito subject and never use `X-Demo-Workspace` as their owner key.
 - Anonymous demo endpoints remain separate from account-owned experiments. Cognito sign-in is an identity boundary for the demo application, not a claim that this stack has undergone production security certification.
+- Public share URLs are immutable snapshots, read-only, expire after 30 days, and are served with `no-store` and `X-Robots-Tag: noindex`. The iframe mock uses `?share=<token>&embed=1` and is limited to same-origin framing. SES reminders are not enabled: configure a verified sender/domain and consent path first. LLM ingredient parsing remains disabled pending an explicit provider/privacy approval; deterministic rules remain authoritative.

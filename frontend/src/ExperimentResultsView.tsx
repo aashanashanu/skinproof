@@ -3,6 +3,8 @@ import { ArrowLeft, CircleAlert, FlaskConical, Image as ImageIcon, Info } from '
 import { getConcernDescription, getScoreExplanation, type AnalysisScore } from './analysisExplanations'
 import { apiHeaders } from './auth'
 import { ExperimentCheckInPanel } from './ExperimentCheckInPanel'
+import { ShareReportPanel } from './ShareReportPanel'
+import { ShareReportPanel } from './ShareReportPanel'
 import { skinConcerns } from './skinConcerns'
 
 type ExperimentForResults = {
@@ -211,11 +213,15 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
                       <CircleAlert size={12} aria-hidden="true" /> {confound.code.replaceAll('_', ' ').toLowerCase()}
                     </li>
                   ))}
+
+                  <ShareReportPanel experimentId={experiment.id} workspaceId={workspaceId} />
                 </ul>
               )}
               <p className="score-note"><Info size={13} aria-hidden="true" /> SkinProof tracks cosmetic trends, not medical advice.</p>
             </section>
           )}
+
+          <ShareReportPanel experimentId={experiment.id} workspaceId={workspaceId} />
 
           {pendingCaptures.length > 0 && (
             <div className="notice notice-info">
