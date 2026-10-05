@@ -2,6 +2,8 @@
 
 **Hackathon:** YouCam API Skin AI & eCommerce VTO Hackathon (Devpost, Perfect Corp), Sep 29 to Nov 2, 2026 **One-line pitch:** Run a measured, personal experiment on any skincare product and get an honest verdict on whether it did anything for your skin.
 
+> This is the original product and hackathon planning brief, not the current operating guide. For implemented behavior and how to use the hosted app, see the [README](README.md), [documentation map](docs/README.md), and [user guide](docs/user-guide.md).
+
 ---
 
 ## 1. Overview

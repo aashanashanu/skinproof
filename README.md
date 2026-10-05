@@ -83,6 +83,8 @@ Because a real eight-week trial cannot complete before a short demo window, the 
 
 ## Further reading
 
+- [docs/README.md](docs/README.md) — documentation map and recommended reading paths.
+- [docs/user-guide.md](docs/user-guide.md) — how to use experiments, captures, check-ins, results, and shared reports.
 - [docs/api-notes.md](docs/api-notes.md) — verified YouCam API contract, score direction, unit costs, and live empirical run results.
 - [docs/measurement-verdict.md](docs/measurement-verdict.md) — exact noise-floor, evidence, and verdict-label rules.
 - [docs/aws-demo.md](docs/aws-demo.md) — Terraform modules, cost controls, and provisioning steps for the hosted environment.

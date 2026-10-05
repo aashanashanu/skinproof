@@ -110,7 +110,7 @@ The endpoint reports this as `documentedUnitEstimate`. It is not an account bala
 
 The docs list JPEG/PNG input, under 10 MB, SD minimum short side 480 px, and recommend a front-facing, evenly lit image with the face occupying about 60–80% of frame width. The API endpoint additionally limits the long side to 4096 px.
 
-The documented browser SDK is `https://plugins-media.makeupar.com/v2.5-camera-kit/sdk.js`. Use `YMK.init({ faceDetectionMode: "skincare", imageFormat: "base64", language: "enu", qualityLevel: "moderate" })`, listen to `faceQualityChanged` and `faceDetectionCaptured`, and mount the SDK at `#YMK-module`. The docs require HTTPS for camera access except localhost. The application includes this flow, but actual browser capture has not been exercised because no hosted HTTPS environment is deployed.
+The documented browser SDK is `https://plugins-media.makeupar.com/v2.5-camera-kit/sdk.js`. Use `YMK.init({ faceDetectionMode: "skincare", imageFormat: "base64", language: "enu", qualityLevel: "moderate" })`, listen to `faceQualityChanged` and `faceDetectionCaptured`, and mount the SDK at `#YMK-module`. The docs require HTTPS for camera access except localhost. The application includes this flow and is hosted over HTTPS. The documented sample runs used approved uploaded images; a real browser-camera capture still needs a separate smoke test on the target demo device.
 
 ## Live M0 Results Summary
 

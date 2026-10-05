@@ -27,7 +27,9 @@ Once five unique eligible captures exist, noise switches to the root-mean-square
 - Confidence starts `HIGH` for a directional change at least three times the floor, otherwise `MEDIUM`; unchanged results start `HIGH` up to half a floor and `MEDIUM` above that. Other results start `LOW`.
 - Each distinct confound lowers confidence one level (`HIGH` to `MEDIUM`, then `LOW`). Two or more major confounds force `INCONCLUSIVE`. Severity is assigned server-side from the accepted confound code, not supplied by the client.
 
-Accepted confound codes are `CAPTURE_GAP`, `QUALITY_DRIFT`, `SUN_EXPOSURE`, `TRAVEL`, `STRESS`, `ILLNESS`, `NEW_PRODUCT`, and `PROTOCOL_CHANGE`. Automatic detection and check-in collection remain deferred to M9; clients may submit explicit codes when requesting a recomputation.
+Accepted confound codes are `CAPTURE_GAP`, `QUALITY_DRIFT`, `SUN_EXPOSURE`, `TRAVEL`, `STRESS`, `ILLNESS`, `NEW_PRODUCT`, and `PROTOCOL_CHANGE`. M9 check-ins are implemented and store self-reported flags separately from automatic suggestions and the user's confirmations. Check-ins are keyed by experiment and date; submitting the same date updates that record and recomputes the verdict from all currently reported and confirmed flags.
+
+The automatic suggestions use valid, successfully analyzed, non-simulated captures taken by the check-in date. `CAPTURE_GAP` is suggested when the latest eligible analysis is more than 14 days before the check-in date. `QUALITY_DRIFT` is suggested when at least one baseline and two follow-up captures exist and the average quality of up to the three most recent follow-ups differs from the baseline average by at least 5 points. Suggestions are not applied to the verdict until explicitly confirmed. Self-reported codes are limited to `SUN_EXPOSURE`, `TRAVEL`, `STRESS`, `ILLNESS`, `NEW_PRODUCT`, and `PROTOCOL_CHANGE`; users cannot self-report detector-only codes.
 
 All generated explanation strings are cosmetic-measurement language and include relevant averages, change, noise comparison, evidence caveat, and confounds. They do not claim to diagnose, treat, cure, or prove a health outcome.
 
@@ -35,7 +37,8 @@ All generated explanation strings are cosmetic-measurement language and include 
 
 - `GET /api/experiments/{experimentId}/verdict` returns the latest stored target-concern verdict, or creates an initial `INCONCLUSIVE` snapshot if none exists.
 - `POST /api/experiments/{experimentId}/verdict` recomputes and appends a snapshot. Its optional body is `{"confounds":["NEW_PRODUCT"]}`; omit the body or use an empty array to clear explicit confounds.
-- Both routes require `X-Demo-Workspace` and scope access through the owning experiment.
+- Both routes require an authenticated owner or an explicit demo workspace and scope access through the owning experiment.
+- `GET /api/experiments/{experimentId}/check-ins` lists dated check-ins. `POST` to the same route upserts the date and returns reported flags, suggestions, and confirmed suggestions. Check-ins are disabled for experiments containing only simulated captures.
 - Successful YouCam jobs recompute the target verdict and noise calibration. A verdict-storage error is logged separately and never retries an already successful provider call.
 
 Migration V4 adds `noise_calibrations` and append-only `verdicts`. No new resource or infrastructure apply is required for the application rollout.
