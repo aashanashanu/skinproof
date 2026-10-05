@@ -1662,7 +1662,7 @@ button:disabled {
   font-weight: 680;
 }
 
-.reminder-dialog input:not([type="checkbox"), [type="time"]),
+.reminder-dialog input:not([type="checkbox"]):not([type="time"]),
 .reminder-dialog input[type="time"],
 .reminder-dialog select {
   min-height: 38px;
