@@ -64,7 +64,8 @@ class SharedReportServiceTest {
         assertFalse(saved.getSnapshotJson().contains("reportId"));
         when(fixture.reports.findByTokenHash(saved.getTokenHash())).thenReturn(Optional.of(saved));
         assertTrue(fixture.service.readPublic(created.token()).imageUrls().isEmpty());
-        verify(fixture.presigner, never()).presignGetObject(any());
+        verify(fixture.presigner, never()).presignGetObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class));
     }
 
         @Test
@@ -146,7 +147,9 @@ class SharedReportServiceTest {
         when(fixture.reports.findByTokenHash(fixture.saved.getTokenHash())).thenReturn(Optional.of(fixture.saved));
         var signedRequest = mock(software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest.class);
         when(signedRequest.url()).thenReturn(new java.net.URL("https://images.example.test/signed"));
-        when(fixture.presigner.presignGetObject(any())).thenReturn(signedRequest);
+        when(fixture.presigner.presignGetObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class)))
+                .thenReturn(signedRequest);
 
         SharedReportResponse response = fixture.service.readPublic(created.token());
 
