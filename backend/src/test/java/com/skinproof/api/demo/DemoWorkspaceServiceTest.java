@@ -7,13 +7,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.skinproof.api.capture.AnalysisEntity;
 import com.skinproof.api.capture.AnalysisRepository;
 import com.skinproof.api.capture.CaptureEntity;
 import com.skinproof.api.capture.CaptureRepository;
 import com.skinproof.api.capture.PrivateImageStore;
 import com.skinproof.api.auth.OwnerType;
+import com.skinproof.api.auth.OwnerScope;
 import com.skinproof.api.experiment.ExperimentEntity;
 import com.skinproof.api.experiment.ExperimentRepository;
 import com.skinproof.api.experiment.ExperimentResponse;
@@ -106,5 +109,64 @@ class DemoWorkspaceServiceTest {
         verify(imageStore, never()).delete(any());
         verify(analyses).deleteById(analysisId);
         verify(experiments).deleteAll(List.of(experiment));
+    }
+
+    @Test
+    void deleteExperimentRemovesPrivateImageAndPreservesSharedAnalysis() {
+        ExperimentRepository experiments = org.mockito.Mockito.mock(ExperimentRepository.class);
+        CaptureRepository captures = org.mockito.Mockito.mock(CaptureRepository.class);
+        AnalysisRepository analyses = org.mockito.Mockito.mock(AnalysisRepository.class);
+        VerdictRepository verdicts = org.mockito.Mockito.mock(VerdictRepository.class);
+        NoiseCalibrationRepository calibrations = org.mockito.Mockito.mock(NoiseCalibrationRepository.class);
+        PrivateImageStore imageStore = org.mockito.Mockito.mock(PrivateImageStore.class);
+        UUID userId = UUID.randomUUID();
+        UUID experimentId = UUID.randomUUID();
+        UUID analysisId = UUID.randomUUID();
+        ExperimentEntity experiment = org.mockito.Mockito.mock(ExperimentEntity.class);
+        when(experiment.getId()).thenReturn(experimentId);
+        when(experiments.findByIdAndOwnerTypeAndOwnerId(experimentId, OwnerType.USER, userId))
+                .thenReturn(java.util.Optional.of(experiment));
+        AnalysisEntity analysis = org.mockito.Mockito.mock(AnalysisEntity.class);
+        when(analysis.getId()).thenReturn(analysisId);
+        CaptureEntity capture = org.mockito.Mockito.mock(CaptureEntity.class);
+        when(capture.isSimulated()).thenReturn(false);
+        when(capture.getImageKey()).thenReturn("private/image-key");
+        when(capture.getAnalysis()).thenReturn(analysis);
+        CaptureEntity captureOwnedElsewhere = org.mockito.Mockito.mock(CaptureEntity.class);
+        when(captures.findAllByExperiment_IdOrderByTakenAtAsc(experimentId)).thenReturn(List.of(capture));
+        when(captures.findAllByAnalysis_Id(analysisId)).thenReturn(List.of(captureOwnedElsewhere));
+
+        DemoWorkspaceService service = new DemoWorkspaceService(
+                experiments, captures, analyses, verdicts, calibrations, imageStore, new VerdictEngine());
+
+        service.deleteExperiment(experimentId, OwnerScope.user(userId));
+
+        verify(verdicts).deleteAllByExperiment_Id(experimentId);
+        verify(calibrations).deleteAllByExperiment_Id(experimentId);
+        verify(imageStore).delete("private/image-key");
+        verify(captures).deleteAll(List.of(capture));
+        verify(captures).flush();
+        verify(analyses, never()).deleteById(analysisId);
+        verify(experiments).delete(experiment);
+    }
+
+    @Test
+    void deleteExperimentRejectsAnExperimentOwnedByAnotherUser() {
+        ExperimentRepository experiments = org.mockito.Mockito.mock(ExperimentRepository.class);
+        CaptureRepository captures = org.mockito.Mockito.mock(CaptureRepository.class);
+        VerdictRepository verdicts = org.mockito.Mockito.mock(VerdictRepository.class);
+        NoiseCalibrationRepository calibrations = org.mockito.Mockito.mock(NoiseCalibrationRepository.class);
+        PrivateImageStore imageStore = org.mockito.Mockito.mock(PrivateImageStore.class);
+        UUID otherUserId = UUID.randomUUID();
+        UUID experimentId = UUID.randomUUID();
+        when(experiments.findByIdAndOwnerTypeAndOwnerId(experimentId, OwnerType.USER, otherUserId))
+                .thenReturn(java.util.Optional.empty());
+        DemoWorkspaceService service = new DemoWorkspaceService(
+                experiments, captures, null, verdicts, calibrations, imageStore, new VerdictEngine());
+
+        assertThrows(ResponseStatusException.class, () -> service.deleteExperiment(
+                experimentId, OwnerScope.user(otherUserId)));
+
+        verifyNoInteractions(captures, verdicts, calibrations, imageStore);
     }
 }

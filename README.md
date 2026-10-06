@@ -40,7 +40,7 @@ All endpoints are served under `/api` behind CloudFront; see `/swagger-ui.html` 
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET/POST /api/experiments`, `POST /api/experiments/{id}/archive` | Experiment CRUD, scoped by Cognito subject when signed in or `X-Demo-Workspace` in explicit demo mode. |
+| `GET/POST /api/experiments`, `POST /api/experiments/{id}/archive`, `POST /api/experiments/{id}/restore`, `DELETE /api/experiments/{id}` | Owner-scoped experiment CRUD and archive/restore lifecycle. Deletion also removes captures and private images. |
 | `POST /api/experiments/claim-demo-data` | Claim records in the current demo UUID namespace into the signed-in Cognito account. |
 | `POST /api/experiments/{id}/captures` | Upload a capture image with consent header, quality metadata, and target concerns; queues analysis. |
 | `GET /api/experiments/{id}/captures` | List all captures for an experiment, oldest first. |

@@ -91,28 +91,35 @@ public class DemoWorkspaceService {
     @Transactional
     public void reset(OwnerScope owner) {
         List<ExperimentEntity> owned = experiments.findAllByOwnerTypeAndOwnerId(owner.type(), owner.id());
-        for (ExperimentEntity experiment : owned) {
-            UUID experimentId = experiment.getId();
-            verdicts.deleteAllByExperiment_Id(experimentId);
-            calibrations.deleteAllByExperiment_Id(experimentId);
-
-            List<CaptureEntity> experimentCaptures = captures.findAllByExperiment_IdOrderByTakenAtAsc(experimentId);
-            Set<UUID> analysisIds = new HashSet<>();
-            for (CaptureEntity capture : experimentCaptures) {
-                analysisIds.add(capture.getAnalysis().getId());
-                if (!capture.isSimulated()) {
-                    imageStore.delete(capture.getImageKey());
-                }
-            }
-            captures.deleteAll(experimentCaptures);
-            captures.flush();
-            for (UUID analysisId : analysisIds) {
-                if (captures.findAllByAnalysis_Id(analysisId).isEmpty()) {
-                    analyses.deleteById(analysisId);
-                }
-            }
-        }
+        for (ExperimentEntity experiment : owned) deleteExperimentData(experiment);
         experiments.deleteAll(owned);
+    }
+
+    @Transactional
+    public void deleteExperiment(UUID experimentId, OwnerScope owner) {
+        ExperimentEntity experiment = experiments.findByIdAndOwnerTypeAndOwnerId(
+                        experimentId, owner.type(), owner.id())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        deleteExperimentData(experiment);
+        experiments.delete(experiment);
+    }
+
+    private void deleteExperimentData(ExperimentEntity experiment) {
+        UUID experimentId = experiment.getId();
+        verdicts.deleteAllByExperiment_Id(experimentId);
+        calibrations.deleteAllByExperiment_Id(experimentId);
+
+        List<CaptureEntity> experimentCaptures = captures.findAllByExperiment_IdOrderByTakenAtAsc(experimentId);
+        Set<UUID> analysisIds = new HashSet<>();
+        for (CaptureEntity capture : experimentCaptures) {
+            analysisIds.add(capture.getAnalysis().getId());
+            if (!capture.isSimulated()) imageStore.delete(capture.getImageKey());
+        }
+        captures.deleteAll(experimentCaptures);
+        captures.flush();
+        for (UUID analysisId : analysisIds) {
+            if (captures.findAllByAnalysis_Id(analysisId).isEmpty()) analyses.deleteById(analysisId);
+        }
     }
 
     private ExperimentEntity seedImproved(UUID workspaceId) {

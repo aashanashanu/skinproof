@@ -493,6 +493,21 @@ button:disabled {
   text-align: right;
 }
 
+.archived-row-actions {
+  grid-column: 4;
+  justify-content: flex-end;
+}
+
+.archived-delete-button {
+  color: #9a4938;
+}
+
+.archived-delete-button:hover {
+  border-color: #efd1c9;
+  color: #803d30;
+  background: #fff5f1;
+}
+
 .is-archived .experiment-symbol {
   filter: grayscale(0.8);
 }

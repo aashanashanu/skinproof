@@ -284,6 +284,7 @@ Each package lists goal, requirements, acceptance criteria, and dependencies. Es
 
 **Backup plan:** pre-record the capture segment and keep seeded data ready in case the live API is slow.
 
+
 ---
 
 ## 7. Timeline (about 5 weeks)

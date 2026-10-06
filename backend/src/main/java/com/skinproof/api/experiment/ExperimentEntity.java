@@ -122,4 +122,8 @@ public class ExperimentEntity {
     public void archive() {
         this.status = ExperimentStatus.ARCHIVED;
     }
+
+    public void restore() {
+        this.status = ExperimentStatus.ACTIVE;
+    }
 }

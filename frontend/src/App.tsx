@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Archive, Beaker, Bell, Camera, Clock3, FlaskConical, Info, LogIn, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Beaker, Bell, Camera, Clock3, FlaskConical, Info, LogIn, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { CameraSpikeView } from './CameraSpikeView'
 import { ExperimentCaptureDialog } from './ExperimentCaptureDialog'
 import { ExperimentResultsView } from './ExperimentResultsView'
@@ -44,6 +44,8 @@ function App() {
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [isIngredientCheckOpen, setIsIngredientCheckOpen] = useState(false)
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
+  const [experimentToDelete, setExperimentToDelete] = useState<Experiment | null>(null)
+  const [isDeletingExperiment, setIsDeletingExperiment] = useState(false)
   const [isReminderSettingsOpen, setIsReminderSettingsOpen] = useState(false)
   const [isSeeding, setIsSeeding] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
@@ -198,6 +200,40 @@ function App() {
       )))
     } catch {
       setError('Couldn’t archive this experiment. Try again.')
+    }
+  }
+
+  async function restoreExperiment(id: string) {
+    setError('')
+    try {
+      const response = await fetch(`/api/experiments/${id}/restore`, {
+        method: 'POST',
+        headers: await apiHeaders(getDemoWorkspaceId()),
+      })
+      if (!response.ok) throw new Error('The experiment could not be restored.')
+      const restored = await response.json() as Experiment
+      setExperiments((current) => current.map((experiment) => experiment.id === id ? restored : experiment))
+    } catch {
+      setError('Couldn’t restore this experiment. Try again.')
+    }
+  }
+
+  async function deleteExperiment() {
+    if (!experimentToDelete) return
+    setIsDeletingExperiment(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/experiments/${experimentToDelete.id}`, {
+        method: 'DELETE',
+        headers: await apiHeaders(getDemoWorkspaceId()),
+      })
+      if (!response.ok) throw new Error('The experiment could not be deleted.')
+      setExperiments((current) => current.filter((experiment) => experiment.id !== experimentToDelete.id))
+      setExperimentToDelete(null)
+    } catch {
+      setError('Couldn’t delete this experiment. Try again.')
+    } finally {
+      setIsDeletingExperiment(false)
     }
   }
 
@@ -493,6 +529,14 @@ function App() {
                     <p>{skinConcerns.find((concern) => concern.value === experiment.targetConcern)?.label ?? experiment.targetConcern}</p>
                   </div>
                   <span className="archived-label">Archived</span>
+                  <div className="row-actions archived-row-actions">
+                    <button className="icon-button archive-button" type="button" aria-label={`Restore ${experiment.productName}`} title="Restore experiment" onClick={() => void restoreExperiment(experiment.id)}>
+                      <ArchiveRestore size={15} aria-hidden="true" />
+                    </button>
+                    <button className="icon-button archived-delete-button" type="button" aria-label={`Delete ${experiment.productName}`} title="Delete experiment permanently" onClick={() => setExperimentToDelete(experiment)}>
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -607,6 +651,29 @@ function App() {
               <button className="secondary-button" type="button" disabled={isResetting} onClick={() => setIsResetConfirmOpen(false)}>Cancel</button>
               <button className="primary-button delete-confirm-button" type="button" disabled={isResetting} onClick={() => void resetDemoData()}>
                 {isResetting ? 'Deleting…' : 'Delete everything'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {experimentToDelete && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !isDeletingExperiment) setExperimentToDelete(null)
+        }}>
+          <section className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-experiment-title">
+            <div className="dialog-heading">
+              <div>
+                <p className="eyebrow">PERMANENT DELETE</p>
+                <h2 id="delete-experiment-title">Delete {experimentToDelete.productName}?</h2>
+              </div>
+              <button className="icon-button close-button" type="button" aria-label="Close" disabled={isDeletingExperiment} onClick={() => setExperimentToDelete(null)}><X size={17} /></button>
+            </div>
+            <p className="dialog-intro">This permanently deletes the experiment, its check-ins and results, capture records, private images, and shared reports. This cannot be undone.</p>
+            <div className="dialog-actions">
+              <button className="secondary-button" type="button" disabled={isDeletingExperiment} onClick={() => setExperimentToDelete(null)}>Cancel</button>
+              <button className="primary-button delete-confirm-button" type="button" disabled={isDeletingExperiment} onClick={() => void deleteExperiment()}>
+                {isDeletingExperiment ? 'Deleting…' : 'Delete experiment'}
               </button>
             </div>
           </section>

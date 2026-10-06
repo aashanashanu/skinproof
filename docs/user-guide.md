@@ -8,6 +8,10 @@ SkinProof helps you track cosmetic skin-score trends while trying one product. I
 2. Choose **New experiment** and enter one product, one supported skin concern, a start date, and trial length. Keep the protocol notes useful and repeatable, such as usual application timing and capture conditions.
 3. Keep other routine changes to a minimum while the trial is active. A second new product or a changed routine makes it harder to interpret the trend.
 
+## Archive, Restore, or Delete
+
+Use **Archive** on an active experiment to move it out of the active list without deleting its history. Expand the **Archived** section to find it later. **Restore** returns it to the active list. **Delete** permanently removes the experiment, check-ins, verdicts, capture records, and private images; confirm the warning only when you are sure. Deleting an experiment also invalidates its shared report links.
+
 ## Capture and Analyze
 
 For a useful comparison, take captures at a consistent time, distance, angle, and lighting. Create two baseline captures at the beginning, marking each as baseline, then add follow-up captures regularly.

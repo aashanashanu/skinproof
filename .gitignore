@@ -35,6 +35,7 @@ backend/build/
 
 # Local sample face photos used for manual Camera test runs; never commit real images
 sample image/
+docs/demo-script.md
 
 # Terraform local state, plans, and per-user variables
 infra/.terraform/

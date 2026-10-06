@@ -1,12 +1,15 @@
 package com.skinproof.api.experiment;
 
+import com.skinproof.api.auth.OwnerScope;
 import com.skinproof.api.auth.OwnerType;
 import com.skinproof.api.auth.SecurityConfiguration;
+import com.skinproof.api.demo.DemoWorkspaceService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,6 +37,9 @@ class ExperimentControllerTest {
 
     @MockitoBean
     private ExperimentRepository experiments;
+
+    @MockitoBean
+    private DemoWorkspaceService experimentData;
 
     @Test
     void listReturnsOnlyRecordsForRequestedWorkspace() throws Exception {
@@ -106,6 +112,47 @@ class ExperimentControllerTest {
         mockMvc.perform(post("/api/experiments/{id}/archive", experimentId)
                         .header(WORKSPACE_HEADER, workspaceId))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void restoreCannotAccessExperimentOwnedByAnotherWorkspace() throws Exception {
+        UUID workspaceId = UUID.randomUUID();
+        UUID experimentId = UUID.randomUUID();
+        when(experiments.findByIdAndOwnerTypeAndOwnerId(experimentId, OwnerType.DEMO, workspaceId))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/experiments/{id}/restore", experimentId)
+                        .header(WORKSPACE_HEADER, workspaceId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void restoreReturnsArchivedExperimentToActive() throws Exception {
+        UUID workspaceId = UUID.randomUUID();
+        ExperimentEntity experiment = new ExperimentEntity(workspaceId,
+                new CreateExperimentRequest("Daily serum", "TEXTURE", LocalDate.of(2026, 9, 29), 8, ""));
+        experiment.archive();
+        when(experiments.findByIdAndOwnerTypeAndOwnerId(experiment.getId(), OwnerType.DEMO, workspaceId))
+                .thenReturn(Optional.of(experiment));
+        when(experiments.save(experiment)).thenReturn(experiment);
+
+        mockMvc.perform(post("/api/experiments/{id}/restore", experiment.getId())
+                        .header(WORKSPACE_HEADER, workspaceId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+    }
+
+    @Test
+    void deleteUsesAuthenticatedOwnerAndReturnsNoContent() throws Exception {
+        UUID userSubject = UUID.randomUUID();
+        UUID experimentId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/experiments/{id}", experimentId)
+                        .header(WORKSPACE_HEADER, UUID.randomUUID())
+                        .with(jwt().jwt(token -> token.subject(userSubject.toString()))))
+                .andExpect(status().isNoContent());
+
+        verify(experimentData).deleteExperiment(experimentId, OwnerScope.user(userSubject));
     }
 
     @Test

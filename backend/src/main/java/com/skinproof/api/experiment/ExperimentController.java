@@ -3,6 +3,7 @@ package com.skinproof.api.experiment;
 import com.skinproof.api.auth.OwnerScope;
 import com.skinproof.api.auth.OwnerScopeResolver;
 import com.skinproof.api.auth.OwnerType;
+import com.skinproof.api.demo.DemoWorkspaceService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.UUID;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,9 +25,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @RequestMapping("/api/experiments")
 public class ExperimentController {
     private final ExperimentRepository experiments;
+    private final DemoWorkspaceService experimentData;
 
-    public ExperimentController(ExperimentRepository experiments) {
+    public ExperimentController(ExperimentRepository experiments, DemoWorkspaceService experimentData) {
         this.experiments = experiments;
+        this.experimentData = experimentData;
     }
 
     @GetMapping
@@ -60,6 +64,28 @@ public class ExperimentController {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
         experiment.archive();
         return ExperimentResponse.from(experiments.save(experiment));
+    }
+
+    @PostMapping("/{id}/restore")
+    public ExperimentResponse restore(
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id) {
+        OwnerScope owner = OwnerScopeResolver.resolve(jwt, workspaceId);
+        ExperimentEntity experiment = experiments.findByIdAndOwnerTypeAndOwnerId(id, owner.type(), owner.id())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        experiment.restore();
+        return ExperimentResponse.from(experiments.save(experiment));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id) {
+        OwnerScope owner = OwnerScopeResolver.resolve(jwt, workspaceId);
+        experimentData.deleteExperiment(id, owner);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/claim-demo-data")
