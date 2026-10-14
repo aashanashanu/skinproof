@@ -27,6 +27,7 @@ class AnalysisJobWorkerTest {
         PrivateImageStore images = mock(PrivateImageStore.class);
         YouCamSkinAnalysisService youCam = mock(YouCamSkinAnalysisService.class);
         VerdictService verdicts = mock(VerdictService.class);
+        CaptureMaskService masks = mock(CaptureMaskService.class);
         ExperimentEntity experiment = new ExperimentEntity(UUID.randomUUID(), new CreateExperimentRequest(
                 "Daily serum", "ACNE", LocalDate.now(), 8, ""));
         AnalysisEntity job = new AnalysisEntity("cache-key", "acne", 9);
@@ -42,7 +43,7 @@ class AnalysisJobWorkerTest {
                 "task-1", "SD", 9, List.of(new SkinAnalysisScore("acne", 60.0, 60, List.of()))));
         org.mockito.Mockito.doThrow(new IllegalStateException("verdict database unavailable"))
                 .when(verdicts).recomputeForAnalysis(job.getId());
-        AnalysisJobWorker worker = new AnalysisJobWorker(captures, analyses, images, youCam, verdicts);
+        AnalysisJobWorker worker = new AnalysisJobWorker(captures, analyses, images, youCam, verdicts, masks);
 
         worker.processOneReadyJob();
 
@@ -50,5 +51,6 @@ class AnalysisJobWorkerTest {
         verify(captures).saveAnalysis(job);
         verify(captures, never()).maxAttempts();
         verify(youCam).analyze(any(), any(), any(), any());
+        verify(masks).archive(job.getId(), List.of(new SkinAnalysisScore("acne", 60.0, 60, List.of())));
     }
 }

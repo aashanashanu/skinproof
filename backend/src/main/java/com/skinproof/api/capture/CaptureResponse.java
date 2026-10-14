@@ -26,7 +26,15 @@ public record CaptureResponse(
     public static CaptureResponse from(CaptureEntity capture) {
         AnalysisEntity analysis = capture.getAnalysis();
         List<String> flags = parseFlags(capture.getQualityFlagsJson());
-        List<SkinAnalysisScore> scores = parseScores(analysis.getConcernScoresJson());
+        List<SkinAnalysisScore> scores = parseScores(analysis.getConcernScoresJson()).stream()
+            .map(score -> new SkinAnalysisScore(score.concern(), score.rawScore(), score.uiScore(),
+                java.util.stream.IntStream.range(0, score.maskUrls().size())
+                    .mapToObj(index -> "/api/captures/" + capture.getId() + "/masks/"
+                        + org.springframework.web.util.UriUtils.encodePathSegment(
+                            score.concern(), java.nio.charset.StandardCharsets.UTF_8)
+                        + "/" + index)
+                    .toList()))
+            .toList();
         return new CaptureResponse(
                 capture.getId(),
                 capture.getQualityScore(),

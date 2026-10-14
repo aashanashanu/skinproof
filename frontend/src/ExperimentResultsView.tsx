@@ -360,8 +360,8 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
                 </div>
               </div>
               <div className="comparison-grid">
-                <ComparisonCard label="Before" point={firstBaselinePoint} />
-                <ComparisonCard label="After" point={latestPoint} />
+                <ComparisonCard label="Before" point={firstBaselinePoint} workspaceId={workspaceId} />
+                <ComparisonCard label="After" point={latestPoint} workspaceId={workspaceId} />
               </div>
             </section>
           )}
@@ -421,17 +421,61 @@ function Timeline({
   )
 }
 
-function ComparisonCard({ label, point }: { label: string; point: { takenAt: string; rawScore: number; maskUrls: string[] } }) {
+function ComparisonCard({ label, point, workspaceId }: { label: string; point: { takenAt: string; rawScore: number; maskUrls: string[] }; workspaceId: string }) {
   return (
     <div className="comparison-card">
       <strong>{label}</strong>
       <span>{new Date(point.takenAt).toLocaleDateString()}</span>
       <span className="comparison-score">Raw {point.rawScore.toFixed(1)}</span>
-      {point.maskUrls[0] ? (
-        <img src={point.maskUrls[0]} alt={`${label} detection mask`} className="comparison-mask" />
-      ) : (
-        <span className="comparison-mask-missing">No mask returned for this capture.</span>
-      )}
+      <DetectionMask key={point.maskUrls.join('\n')} label={label} urls={point.maskUrls} workspaceId={workspaceId} />
     </div>
   )
+}
+
+function DetectionMask({ label, urls, workspaceId }: { label: string; urls: string[]; workspaceId: string }) {
+  const [urlIndex, setUrlIndex] = useState(0)
+  const [loadedMask, setLoadedMask] = useState<{ source: string; blobUrl: string } | null>(null)
+  const url = urls[urlIndex]
+  const isPrivate = url?.startsWith('/api/captures/') ?? false
+
+  useEffect(() => {
+    if (!url || !isPrivate) return
+    const controller = new AbortController()
+    let blobUrl: string | undefined
+
+    async function load() {
+      try {
+        const response = await fetch(url, {
+          headers: await apiHeaders(workspaceId),
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('Mask unavailable.')
+        const blob = await response.blob()
+        if (controller.signal.aborted) return
+        blobUrl = URL.createObjectURL(blob)
+        setLoadedMask({ source: url, blobUrl })
+      } catch {
+        if (!controller.signal.aborted) setUrlIndex((current) => current + 1)
+      }
+    }
+
+    void load()
+    return () => {
+      controller.abort()
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
+    }
+  }, [url, isPrivate, workspaceId])
+
+  if (!url) {
+    return (
+      <span className="comparison-mask-missing" role={urls.length ? 'status' : undefined}>
+        {urls.length ? 'Detection mask unavailable. Its image link may have expired.' : 'No mask returned for this capture.'}
+      </span>
+    )
+  }
+
+  const source = isPrivate ? (loadedMask?.source === url ? loadedMask.blobUrl : null) : url
+  if (!source) return <span className="comparison-mask-missing" role="status">Loading detection mask...</span>
+
+  return <img src={source} alt={`${label} detection mask`} className="comparison-mask" onError={() => setUrlIndex((current) => current + 1)} />
 }

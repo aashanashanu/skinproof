@@ -1528,9 +1528,12 @@ button:disabled {
 }
 
 .comparison-mask {
+  display: block;
   width: 100%;
+  aspect-ratio: 3 / 4;
   border-radius: 6px;
-  object-fit: cover;
+  object-fit: contain;
+  background: #eef1ef;
 }
 
 .comparison-mask-missing {

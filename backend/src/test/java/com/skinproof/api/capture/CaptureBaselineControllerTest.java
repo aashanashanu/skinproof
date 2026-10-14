@@ -6,6 +6,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.skinproof.api.auth.OwnerScope;
@@ -31,6 +34,9 @@ class CaptureBaselineControllerTest {
 
     @MockitoBean
     private CaptureBaselineService baselines;
+
+    @MockitoBean
+    private CaptureMaskService masks;
 
     @Test
     void marksBaselineForOwningWorkspace() throws Exception {
@@ -59,6 +65,33 @@ class CaptureBaselineControllerTest {
     }
 
     @Test
+        void maskResponseIsPrivatePngAndUsesAuthenticatedOwner() throws Exception {
+        UUID captureId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        byte[] png = new byte[] {1, 2, 3};
+        when(masks.read(captureId, "texture", 0, OwnerScope.user(userId))).thenReturn(png);
+
+        mockMvc.perform(get("/api/captures/{captureId}/masks/texture/0", captureId)
+                .with(jwt().jwt(token -> token.subject(userId.toString()))))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("image/png"))
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(content().bytes(png));
+
+        verify(masks).read(captureId, "texture", 0, OwnerScope.user(userId));
+        }
+
+        @Test
+        void expiredLegacyMaskReturnsGone() throws Exception {
+        when(masks.read(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any()))
+            .thenThrow(new ResponseStatusException(HttpStatus.GONE));
+
+        mockMvc.perform(get("/api/captures/{captureId}/masks/texture/0", UUID.randomUUID())
+                .header("X-Demo-Workspace", UUID.randomUUID()))
+            .andExpect(status().isGone());
+        }
+
+        @Test
     void inaccessibleCaptureReturnsNotFound() throws Exception {
         when(baselines.markAsBaseline(any(), any()))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));

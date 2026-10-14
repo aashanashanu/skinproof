@@ -29,10 +29,12 @@ public class CaptureController {
 
     private final CaptureAnalysisService captures;
     private final CaptureBaselineService baselines;
+    private final CaptureMaskService masks;
 
-    public CaptureController(CaptureAnalysisService captures, CaptureBaselineService baselines) {
+    public CaptureController(CaptureAnalysisService captures, CaptureBaselineService baselines, CaptureMaskService masks) {
         this.captures = captures;
         this.baselines = baselines;
+        this.masks = masks;
     }
 
     @PostMapping(path = "/api/experiments/{experimentId}/captures", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -111,5 +113,20 @@ public class CaptureController {
             @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
         return baselines.markAsBaseline(captureId, OwnerScopeResolver.resolve(jwt, workspaceId));
+    }
+
+    @GetMapping(path = "/api/captures/{captureId}/masks/{concern}/{index}", produces = MediaType.IMAGE_PNG_VALUE)
+    @Operation(summary = "Read a private detection mask for an owned capture")
+    public org.springframework.http.ResponseEntity<byte[]> mask(
+            @PathVariable UUID captureId,
+            @PathVariable String concern,
+            @PathVariable int index,
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
+        byte[] content = masks.read(captureId, concern, index, OwnerScopeResolver.resolve(jwt, workspaceId));
+        return org.springframework.http.ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .contentType(MediaType.IMAGE_PNG)
+                .body(content);
     }
 }

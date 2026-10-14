@@ -8,6 +8,7 @@ import com.skinproof.api.analysis.SkinConcern;
 import com.skinproof.api.capture.AnalysisEntity;
 import com.skinproof.api.capture.AnalysisRepository;
 import com.skinproof.api.capture.CaptureEntity;
+import com.skinproof.api.capture.CaptureMaskService;
 import com.skinproof.api.capture.CaptureRepository;
 import com.skinproof.api.capture.PrivateImageStore;
 import com.skinproof.api.experiment.CreateExperimentRequest;
@@ -28,9 +29,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -110,15 +109,18 @@ public class DemoWorkspaceService {
         calibrations.deleteAllByExperiment_Id(experimentId);
 
         List<CaptureEntity> experimentCaptures = captures.findAllByExperiment_IdOrderByTakenAtAsc(experimentId);
-        Set<UUID> analysisIds = new HashSet<>();
+        java.util.Map<UUID, AnalysisEntity> captureAnalyses = new java.util.HashMap<>();
         for (CaptureEntity capture : experimentCaptures) {
-            analysisIds.add(capture.getAnalysis().getId());
+            captureAnalyses.put(capture.getAnalysis().getId(), capture.getAnalysis());
             if (!capture.isSimulated()) imageStore.delete(capture.getImageKey());
         }
         captures.deleteAll(experimentCaptures);
         captures.flush();
-        for (UUID analysisId : analysisIds) {
-            if (captures.findAllByAnalysis_Id(analysisId).isEmpty()) analyses.deleteById(analysisId);
+        for (var entry : captureAnalyses.entrySet()) {
+            if (captures.findAllByAnalysis_Id(entry.getKey()).isEmpty()) {
+                CaptureMaskService.storageKeys(entry.getValue()).forEach(imageStore::delete);
+                analyses.deleteById(entry.getKey());
+            }
         }
     }
 

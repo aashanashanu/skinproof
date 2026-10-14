@@ -151,6 +151,38 @@ class DemoWorkspaceServiceTest {
     }
 
     @Test
+    void deletingLastCaptureDeletesRetainedDetectionMasks() {
+        ExperimentRepository experiments = org.mockito.Mockito.mock(ExperimentRepository.class);
+        CaptureRepository captures = org.mockito.Mockito.mock(CaptureRepository.class);
+        AnalysisRepository analyses = org.mockito.Mockito.mock(AnalysisRepository.class);
+        VerdictRepository verdicts = org.mockito.Mockito.mock(VerdictRepository.class);
+        NoiseCalibrationRepository calibrations = org.mockito.Mockito.mock(NoiseCalibrationRepository.class);
+        PrivateImageStore imageStore = org.mockito.Mockito.mock(PrivateImageStore.class);
+        UUID userId = UUID.randomUUID();
+        UUID experimentId = UUID.randomUUID();
+        ExperimentEntity experiment = org.mockito.Mockito.mock(ExperimentEntity.class);
+        when(experiment.getId()).thenReturn(experimentId);
+        when(experiments.findByIdAndOwnerTypeAndOwnerId(experimentId, OwnerType.USER, userId))
+                .thenReturn(java.util.Optional.of(experiment));
+        AnalysisEntity analysis = new AnalysisEntity("cache-key", "texture", 9);
+        analysis.succeed("task", """
+                [{"concern":"texture","rawScore":60,"uiScore":65,"maskUrls":["https://provider.example/mask.png"]}]
+                """);
+        CaptureEntity capture = new CaptureEntity(experiment, analysis, "private/image-key", "hash",
+                "image/png", 100, "[]", true, true);
+        when(captures.findAllByExperiment_IdOrderByTakenAtAsc(experimentId)).thenReturn(List.of(capture));
+        when(captures.findAllByAnalysis_Id(analysis.getId())).thenReturn(List.of());
+        DemoWorkspaceService service = new DemoWorkspaceService(
+                experiments, captures, analyses, verdicts, calibrations, imageStore, new VerdictEngine());
+
+        service.deleteExperiment(experimentId, OwnerScope.user(userId));
+
+        verify(imageStore).delete("private/image-key");
+        verify(imageStore).delete("analyses/" + analysis.getId() + "/masks/texture/0.png");
+        verify(analyses).deleteById(analysis.getId());
+    }
+
+    @Test
     void deleteExperimentRejectsAnExperimentOwnedByAnotherUser() {
         ExperimentRepository experiments = org.mockito.Mockito.mock(ExperimentRepository.class);
         CaptureRepository captures = org.mockito.Mockito.mock(CaptureRepository.class);

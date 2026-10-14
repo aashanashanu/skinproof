@@ -24,18 +24,21 @@ public class AnalysisJobWorker {
     private final PrivateImageStore images;
     private final com.skinproof.api.analysis.YouCamSkinAnalysisService youCam;
     private final VerdictService verdicts;
+    private final CaptureMaskService masks;
 
     public AnalysisJobWorker(
             CaptureAnalysisService captures,
             AnalysisRepository analyses,
             PrivateImageStore images,
             com.skinproof.api.analysis.YouCamSkinAnalysisService youCam,
-            VerdictService verdicts) {
+            VerdictService verdicts,
+            CaptureMaskService masks) {
         this.captures = captures;
         this.analyses = analyses;
         this.images = images;
         this.youCam = youCam;
         this.verdicts = verdicts;
+        this.masks = masks;
     }
 
     @Scheduled(fixedDelayString = "${skinproof.analysis.poller-interval:PT2S}")
@@ -56,6 +59,7 @@ public class AnalysisJobWorker {
                     concerns);
             job.succeed(result.taskId(), toJson(result.scores()));
             captures.saveAnalysis(job);
+            masks.archive(job.getId(), result.scores());
             try {
                 verdicts.recomputeForAnalysis(job.getId());
             } catch (RuntimeException verdictException) {
