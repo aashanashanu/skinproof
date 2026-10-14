@@ -28,9 +28,11 @@ public class CaptureController {
     private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
 
     private final CaptureAnalysisService captures;
+    private final CaptureBaselineService baselines;
 
-    public CaptureController(CaptureAnalysisService captures) {
+    public CaptureController(CaptureAnalysisService captures, CaptureBaselineService baselines) {
         this.captures = captures;
+        this.baselines = baselines;
     }
 
     @PostMapping(path = "/api/experiments/{experimentId}/captures", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -100,5 +102,14 @@ public class CaptureController {
             @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
         return captures.retryAnalysis(captureId, OwnerScopeResolver.resolve(jwt, workspaceId));
+    }
+
+    @PostMapping("/api/captures/{captureId}/baseline")
+    @Operation(summary = "Make an existing valid, analyzed capture a baseline and update the verdict")
+    public CaptureResponse markAsBaseline(
+            @PathVariable UUID captureId,
+            @RequestHeader(name = "X-Demo-Workspace", required = false) UUID workspaceId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
+        return baselines.markAsBaseline(captureId, OwnerScopeResolver.resolve(jwt, workspaceId));
     }
 }

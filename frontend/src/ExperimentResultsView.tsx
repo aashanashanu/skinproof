@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CircleAlert, FlaskConical, Image as ImageIcon, Info } from 'lucide-react'
+import { ArrowLeft, CircleAlert, Flag, FlaskConical, Image as ImageIcon, Info } from 'lucide-react'
 import { getConcernDescription, getScoreExplanation, type AnalysisScore } from './analysisExplanations'
 import { apiHeaders } from './auth'
 import { ExperimentCheckInPanel } from './ExperimentCheckInPanel'
@@ -63,6 +63,8 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
   const [verdict, setVerdict] = useState<VerdictResult | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [savingBaselineId, setSavingBaselineId] = useState<string | null>(null)
+  const [baselineNotice, setBaselineNotice] = useState('')
 
   const concernMeta = skinConcerns.find((item) => item.value === experiment.targetConcern)
   const concernAction = concernMeta?.action ?? experiment.targetConcern.toLowerCase()
@@ -143,6 +145,36 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
     return null
   }
 
+  async function makeBaseline(captureId: string) {
+    setSavingBaselineId(captureId)
+    setBaselineNotice('')
+    setError('')
+    try {
+      const response = await fetch(`/api/captures/${captureId}/baseline`, {
+        method: 'POST',
+        headers: await apiHeaders(workspaceId),
+      })
+      if (!response.ok) throw new Error('Baseline update failed.')
+      const updatedCapture = await response.json() as CaptureResult
+      setCaptures((current) => current.map((capture) => capture.captureId === captureId ? updatedCapture : capture))
+      setBaselineNotice('Capture added to the baseline.')
+      try {
+        const verdictResponse = await fetch(`/api/experiments/${experiment.id}/verdict`, {
+          headers: await apiHeaders(workspaceId),
+        })
+        if (!verdictResponse.ok) throw new Error('Verdict refresh failed.')
+        setVerdict(await verdictResponse.json() as VerdictResult)
+      } catch {
+        setVerdict(null)
+        setError('The baseline was saved, but results could not be refreshed. Reopen results to try again.')
+      }
+    } catch {
+      setError('Could not make this capture a baseline. It must be valid and successfully analyzed. Try again.')
+    } finally {
+      setSavingBaselineId(null)
+    }
+  }
+
   return (
     <main className="main-content" id="experiment-results">
       <header className="topbar">
@@ -164,6 +196,11 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
       {error && (
         <div className="notice notice-error" role="alert">
           <span>{error}</span>
+        </div>
+      )}
+      {baselineNotice && (
+        <div className="notice notice-info" role="status">
+          <span>{baselineNotice}</span>
         </div>
       )}
 
@@ -254,6 +291,17 @@ export function ExperimentResultsView({ experiment, workspaceId, onBack }: Exper
                   <span>{new Date(capture.takenAt).toLocaleDateString()} · {capture.baseline ? 'Baseline' : 'Follow-up'}</span>
                   <span>{capture.analysisStatus.toLowerCase().replaceAll('_', ' ')}</span>
                 </summary>
+                {!capture.baseline && capture.valid && capture.analysisStatus === 'SUCCEEDED' && (
+                  <button
+                    className="back-link"
+                    type="button"
+                    disabled={savingBaselineId !== null}
+                    onClick={() => void makeBaseline(capture.captureId)}
+                  >
+                    <Flag size={14} aria-hidden="true" />
+                    {savingBaselineId === capture.captureId ? 'Saving baseline...' : 'Make baseline'}
+                  </button>
+                )}
                 {capture.simulated && <p className="analysis-explanation">Synthetic example data; this is not a real analysis.</p>}
                 {!capture.valid && <p className="analysis-explanation">This capture did not pass quality checks and is not included in the experiment trend.</p>}
                 {capture.analysisStatus === 'SUCCEEDED' ? (

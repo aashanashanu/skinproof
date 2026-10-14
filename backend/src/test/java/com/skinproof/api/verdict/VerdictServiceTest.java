@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.skinproof.api.capture.CaptureRepository;
+import com.skinproof.api.auth.OwnerScope;
 import com.skinproof.api.experiment.CreateExperimentRequest;
 import com.skinproof.api.experiment.ExperimentEntity;
 import com.skinproof.api.experiment.ExperimentRepository;
@@ -46,6 +47,34 @@ class VerdictServiceTest {
     }
 
     @Test
+        void baselineRecomputePreservesExistingConfounds() {
+        ExperimentRepository experiments = org.mockito.Mockito.mock(ExperimentRepository.class);
+        CaptureRepository captures = org.mockito.Mockito.mock(CaptureRepository.class);
+        NoiseCalibrationRepository calibrations = org.mockito.Mockito.mock(NoiseCalibrationRepository.class);
+        VerdictRepository verdicts = org.mockito.Mockito.mock(VerdictRepository.class);
+        UUID workspaceId = UUID.randomUUID();
+        ExperimentEntity experiment = experiment(workspaceId);
+        ConfoundFlag confound = new ConfoundFlag(ConfoundCode.NEW_PRODUCT);
+        VerdictEngine engine = new VerdictEngine();
+        VerdictEntity previous = new VerdictEntity(experiment,
+            engine.assess("texture", List.of(), List.of(confound)),
+            "[{\"code\":\"NEW_PRODUCT\",\"severity\":\"MAJOR\"}]");
+        when(experiments.findByIdAndWorkspaceId(experiment.getId(), workspaceId)).thenReturn(Optional.of(experiment));
+        when(verdicts.findFirstByExperiment_IdAndConcernOrderByComputedAtDesc(experiment.getId(), "texture"))
+            .thenReturn(Optional.of(previous));
+        when(captures.findAllByExperiment_IdOrderByTakenAtAsc(experiment.getId())).thenReturn(List.of());
+        when(calibrations.findByExperiment_IdAndConcern(experiment.getId(), "texture")).thenReturn(Optional.empty());
+        when(verdicts.save(any(VerdictEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        VerdictService service = new VerdictService(experiments, captures, calibrations, verdicts, engine);
+
+        VerdictResponse response = service.recomputeWithExistingConfounds(experiment.getId(), OwnerScope.demo(workspaceId));
+
+        assertEquals(List.of(confound), response.confounds());
+        verify(verdicts).save(any(VerdictEntity.class));
+        verify(calibrations).save(any(NoiseCalibrationEntity.class));
+        }
+
+        @Test
     void workspaceMismatchCannotReadOrComputeVerdict() {
         ExperimentRepository experiments = org.mockito.Mockito.mock(ExperimentRepository.class);
         CaptureRepository captures = org.mockito.Mockito.mock(CaptureRepository.class);

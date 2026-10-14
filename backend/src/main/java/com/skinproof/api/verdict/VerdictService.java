@@ -66,6 +66,16 @@ public class VerdictService {
     }
 
     @Transactional
+    public VerdictResponse recomputeWithExistingConfounds(UUID experimentId, OwnerScope owner) {
+        ExperimentEntity experiment = findExperiment(experimentId, owner);
+        List<ConfoundFlag> confounds = verdicts
+                .findFirstByExperiment_IdAndConcernOrderByComputedAtDesc(experimentId, targetAction(experiment))
+                .map(entity -> parseConfounds(entity.getConfoundFlagsJson()))
+                .orElse(List.of());
+        return recompute(experiment, confounds);
+    }
+
+    @Transactional
     public void recomputeForAnalysis(UUID analysisId) {
         captures.findAllByAnalysis_Id(analysisId).stream()
                 .map(capture -> capture.getExperiment().getId())

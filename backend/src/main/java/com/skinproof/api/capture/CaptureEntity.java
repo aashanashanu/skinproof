@@ -117,6 +117,7 @@ public class CaptureEntity {
     public int getQualityScore() { return qualityScore; }
     public String getQualityFlagsJson() { return qualityFlagsJson; }
     public boolean isBaseline() { return baseline; }
+    public void markAsBaseline() { baseline = true; }
     public boolean isValid() { return valid; }
     public boolean isSimulated() { return simulated; }
     public Instant getTakenAt() { return takenAt; }

@@ -24,6 +24,8 @@ Choose the experiment's target concern and mark whether the capture is a baselin
 
 The results view shows capture history, raw-score trends, the noise floor, and the current verdict. Higher raw scores are more favorable for supported numeric concerns; the provider's adjusted UI score is shown for reference but is not used for trend calculations. See [Measurement and Verdict Contract](measurement-verdict.md) for exact thresholds and evidence requirements.
 
+To use an already captured image as a baseline, expand its entry under **Analysis details** and choose **Make baseline**. This is available for valid, successfully analyzed follow-up captures. The capture joins the existing baseline set and the verdict updates without uploading the image or running analysis again. Use images from the beginning of the experiment for a meaningful starting comparison.
+
 The verdict may be **Improved**, **No detectable change**, **Worse**, or **Inconclusive**. At least two eligible baseline captures, two follow-up captures, four unique valid captures, and four weeks of observation are needed for a directional result. An inconclusive result is intentional when evidence is insufficient or ambiguous.
 
 ## Weekly Check-ins
